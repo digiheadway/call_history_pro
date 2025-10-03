@@ -4,12 +4,13 @@ import type { Caller, Call } from './types';
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
 
 async function apiRequest<T>(action: string, params: Record<string, any>, method: 'GET' | 'POST' = 'GET'): Promise<T> {
-  const url = new URL(API_BASE_URL);
+  let url: URL;
   const options: RequestInit = {
     method,
   };
 
   if (method === 'GET') {
+    url = new URL(API_BASE_URL);
     url.searchParams.append('action', action);
     for (const key in params) {
       if (params[key] !== undefined) {
@@ -17,6 +18,7 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
       }
     }
   } else { // POST
+    url = new URL(API_BASE_URL);
     url.searchParams.append('action', action);
     const formData = new FormData();
     for (const key in params) {
