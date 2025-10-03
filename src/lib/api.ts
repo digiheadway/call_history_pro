@@ -79,7 +79,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
         })) as T;
     }
 
-    return (data.data || []) as T;
+    return (data.data || data) as T;
   } catch (error) {
     console.error(`API action "${action}" failed:`, error);
     throw error;
