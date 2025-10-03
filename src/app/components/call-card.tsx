@@ -166,6 +166,15 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
   const handleExclude = () => {
     onExcludeNumber(caller.id);
   };
+  
+  const getCallerDisplay = () => {
+    if (caller.lead_name) {
+      const budget = caller.budget ? ` - ${caller.budget}` : '';
+      return `${caller.lead_id || ''}. ${caller.lead_name}${budget}`;
+    }
+    return caller.phone;
+  };
+
 
   const lastCallTime = formatDistanceToNow(new Date(caller.last_call), { addSuffix: true });
   const notePreview = caller.note ? caller.note.split(' ').slice(0, 7).join(' ') + (caller.note.split(' ').length > 7 ? '...' : '') : '';
@@ -177,7 +186,7 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
           <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:bg-accent">
             <div className="flex w-full items-start gap-4 text-left">
               <div className="flex-1 space-y-1">
-                <p className="font-semibold text-foreground">{caller.phone}</p>
+                <p className="font-semibold text-foreground">{getCallerDisplay()}</p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {callTypeIcons[caller.last_call_type]}
                   <span>{lastCallTime}</span>

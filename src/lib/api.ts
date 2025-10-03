@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
 
@@ -7,10 +6,14 @@ export interface Caller {
   phone: string;
   note: string | null;
   calls: number;
-  last_call: string; // DATETIME string 'YYYY-MM-DD HH:MM:SS'
+  last_call: string;
   last_call_type: 'incoming' | 'outgoing' | 'missed' | 'rejected';
-  last_call_duration: number; // in seconds
+  last_call_duration: number;
   excluded: boolean;
+  lead_id: string | null;
+  lead_name: string | null;
+  segment: string | null;
+  budget: string | null;
 }
 
 export interface Call {
@@ -20,7 +23,7 @@ export interface Call {
   duration: number;
   type: 'incoming' | 'outgoing' | 'missed' | 'rejected';
   recording_url: string | null;
-  created_ts: string; // TIMESTAMP string
+  created_ts: string;
 }
 
 interface FetchParams {
@@ -65,10 +68,18 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
 
     if (action === 'fetch_callers' && Array.isArray(data.data)) {
         return data.data.map((caller: any) => ({
-            ...caller,
-            calls: parseInt(caller.calls, 10),
+            id: caller.caller_id,
+            phone: caller.caller_phone,
+            last_call: caller.last_call,
+            last_call_type: caller.last_call_type,
             last_call_duration: parseInt(caller.last_call_duration, 10),
+            note: caller.note,
             excluded: caller.excluded === '1',
+            calls: parseInt(caller.calls, 10) || 1, // Fallback for calls
+            lead_id: caller.lead_id,
+            lead_name: caller.lead_name,
+            segment: caller.segment,
+            budget: caller.budget,
         })) as T;
     }
      if (action === 'fetch_calls' && Array.isArray(data.data)) {
@@ -89,7 +100,7 @@ export function fetchCallers(params: {
   start_date?: string; // YYYY-MM-DD
   end_date?: string;   // YYYY-MM-DD
   phone?: string;
-  id?: string;
+  caller_id?: string;
   last_call_type?: 'incoming' | 'outgoing' | 'missed' | 'rejected';
   min_last_call_duration?: number;
   max_last_call_duration?: number;
@@ -109,10 +120,10 @@ export function updateCallNote(id: string, note: string): Promise<any> {
   return apiRequest('update_call_note', { id, note }, 'POST');
 }
 
-export function updateCallerNote(id: string, note: string): Promise<any> {
-  return apiRequest('update_caller_note', { id, note }, 'POST');
+export function updateCallerNote(caller_id: string, note: string): Promise<any> {
+  return apiRequest('update_caller_note', { caller_id, note }, 'POST');
 }
 
-export function updateExcludedStatus(id: string, excluded: boolean): Promise<any> {
-  return apiRequest('update_excluded', { id, excluded: excluded ? 1 : 0 }, 'POST');
+export function updateExcludedStatus(caller_id: string, excluded: boolean): Promise<any> {
+  return apiRequest('update_excluded', { caller_id, excluded: excluded ? 1 : 0 }, 'POST');
 }
