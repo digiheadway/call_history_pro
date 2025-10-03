@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
 
@@ -28,7 +29,10 @@ interface FetchParams {
 
 async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' | 'POST' = 'GET'): Promise<T> {
   const url = new URL(API_BASE_URL);
-  
+  const options: RequestInit = {
+    method,
+  };
+
   if (method === 'GET') {
     url.searchParams.append('action', action);
     for (const key in params) {
@@ -36,13 +40,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
         url.searchParams.append(key, String(params[key]));
       }
     }
-  }
-
-  const options: RequestInit = {
-    method,
-  };
-
-  if (method === 'POST') {
+  } else { // POST
     const formData = new FormData();
     formData.append('action', action);
     for (const key in params) {
@@ -52,6 +50,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
     }
     options.body = formData;
   }
+
 
   try {
     const response = await fetch(url.toString(), options);
