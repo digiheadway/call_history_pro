@@ -37,9 +37,21 @@ export default function Home() {
   const { toast } = useToast();
 
   const toggleAccordion = (id: string) => {
-    setExpandedAccordions(prev => 
-      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-    );
+    setExpandedAccordions(prev => {
+      const isAlreadyExpanded = prev.includes(id);
+      if (isAlreadyExpanded) {
+        // If it's already open, close it.
+        return prev.filter(item => item !== id);
+      } else {
+        // If it's not open, add it.
+        const newExpanded = [...prev, id];
+        // If we now have more than 2 open, remove the first one (the oldest).
+        if (newExpanded.length > 2) {
+          return newExpanded.slice(1);
+        }
+        return newExpanded;
+      }
+    });
   };
 
   const fetchAndSetCallers = useCallback(async (range: DateRange | undefined) => {
