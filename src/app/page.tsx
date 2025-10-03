@@ -33,6 +33,14 @@ export default function Home() {
       )
     );
   };
+  
+  const handleUpdateCallNote = (callId: string, newNote: string) => {
+    setCalls((prevCalls) =>
+      prevCalls.map((call) =>
+        call.id === callId ? { ...call, notes: newNote } : call
+      )
+    );
+  };
 
   const handleExcludeNumber = (phoneNumber: string) => {
     setExcludedNumbers((prev) => [...prev, phoneNumber]);
@@ -85,7 +93,8 @@ export default function Home() {
       <Header />
       <CallLog 
         callGroups={callGroups} 
-        onUpdateNote={handleUpdateContactNote}
+        onUpdateContactNote={handleUpdateContactNote}
+        onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
       />
     </div>

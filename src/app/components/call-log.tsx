@@ -16,11 +16,12 @@ export interface CallGroup {
 
 interface CallLogProps {
   callGroups: CallGroup[];
-  onUpdateNote: (phoneNumber: string, newNote: string) => void;
+  onUpdateContactNote: (phoneNumber: string, newNote: string) => void;
+  onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (phoneNumber: string) => void;
 }
 
-export default function CallLog({ callGroups, onUpdateNote, onExcludeNumber }: CallLogProps) {
+export default function CallLog({ callGroups, onUpdateContactNote, onUpdateCallNote, onExcludeNumber }: CallLogProps) {
   
   const missedGroups = useMemo(() => callGroups.filter(group => 
     group.calls.some(call => call.type === 'missed')
@@ -50,7 +51,7 @@ export default function CallLog({ callGroups, onUpdateNote, onExcludeNumber }: C
           <div className="space-y-2 p-4 pt-2">
             {callGroups.length > 0 ? (
               callGroups.map(group => (
-                <CallGroupCard key={group.phoneNumber} group={group} onUpdateNote={onUpdateNote} onExcludeNumber={onExcludeNumber} />
+                <CallGroupCard key={group.phoneNumber} group={group} onUpdateContactNote={onUpdateContactNote} onUpdateCallNote={onUpdateCallNote} onExcludeNumber={onExcludeNumber} />
               ))
             ) : <NoCallsMessage tab="all" />}
           </div>
@@ -61,7 +62,7 @@ export default function CallLog({ callGroups, onUpdateNote, onExcludeNumber }: C
           <div className="space-y-2 p-4 pt-2">
             {missedGroups.length > 0 ? (
                 missedGroups.map(group => (
-                    <CallGroupCard key={group.phoneNumber} group={group} onUpdateNote={onUpdateNote} onExcludeNumber={onExcludeNumber} />
+                    <CallGroupCard key={group.phoneNumber} group={group} onUpdateContactNote={onUpdateContactNote} onUpdateCallNote={onUpdateCallNote} onExcludeNumber={onExcludeNumber} />
                 ))
             ) : <NoCallsMessage tab="missed" />}
           </div>
@@ -72,7 +73,7 @@ export default function CallLog({ callGroups, onUpdateNote, onExcludeNumber }: C
           <div className="space-y-2 p-4 pt-2">
             {rejectedGroups.length > 0 ? (
                 rejectedGroups.map(group => (
-                    <CallGroupCard key={group.phoneNumber} group={group} onUpdateNote={onUpdateNote} onExcludeNumber={onExcludeNumber} />
+                    <CallGroupCard key={group.phoneNumber} group={group} onUpdateContactNote={onUpdateContactNote} onUpdateCallNote={onUpdateCallNote} onExcludeNumber={onExcludeNumber} />
                 ))
             ) : <NoCallsMessage tab="rejected" />}
           </div>

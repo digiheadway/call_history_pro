@@ -10,6 +10,7 @@ import {
   PhoneMissed,
   XCircle,
   PhoneOff,
+  MoreVertical,
 } from 'lucide-react';
 import {
   Card,
@@ -24,10 +25,17 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface CallGroupCardProps {
   group: CallGroup;
-  onUpdateNote: (phoneNumber: string, newNote: string) => void;
+  onUpdateContactNote: (phoneNumber: string, newNote: string) => void;
+  onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (phoneNumber: string) => void;
 }
 
@@ -38,16 +46,69 @@ const callTypeIcons: Record<Call['type'], React.ReactNode> = {
   rejected: <PhoneOff className="h-4 w-4 text-destructive" />,
 };
 
-export function CallGroupCard({ group, onUpdateNote, onExcludeNumber }: CallGroupCardProps) {
-  const [note, setNote] = useState(group.contact?.notes || '');
+function formatDuration(seconds: number) {
+    if (seconds === 0) return '0s';
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = seconds % 60;
+    return [h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : '', s > 0 ? `${s}s` : '']
+        .filter(Boolean)
+        .join(' ');
+}
+
+function CallDetail({ call, onUpdateCallNote }: { call: Call, onUpdateCallNote: (callId: string, newNote: string) => void }) {
+  const [note, setNote] = useState(call.notes || '');
+
+  useEffect(() => {
+    setNote(call.notes || '');
+  }, [call.notes]);
+
+  const handleSaveNote = () => {
+    onUpdateCallNote(call.id, note);
+  };
+  
+  return (
+    <Accordion type="single" collapsible className="w-full">
+      <AccordionItem value={call.id} className="border-0">
+        <AccordionTrigger className="flex w-full items-center justify-between text-xs p-2 hover:no-underline hover:bg-accent/50 rounded-md">
+            <div className="flex items-center gap-2">
+                {callTypeIcons[call.type]}
+                <span className="capitalize">{call.type}</span>
+            </div>
+            <div className='flex items-center gap-2'>
+                <span className="text-muted-foreground">{format(call.timestamp, 'MMM d, h:mm a')}</span>
+                <Badge variant="outline" className="hidden sm:inline-flex">{formatDuration(call.duration)}</Badge>
+            </div>
+        </AccordionTrigger>
+        <AccordionContent>
+          <div className="space-y-2 pt-2">
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Add a note for this specific call..."
+              className="min-h-[60px] text-xs"
+            />
+            <Button onClick={handleSaveNote} size="sm" className="w-full">
+              Save Call Note
+            </Button>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    </Accordion>
+  );
+}
+
+
+export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, onExcludeNumber }: CallGroupCardProps) {
+  const [contactNote, setContactNote] = useState(group.contact?.notes || '');
   const { toast } = useToast();
 
   useEffect(() => {
-    setNote(group.contact?.notes || '');
+    setContactNote(group.contact?.notes || '');
   }, [group.contact?.notes]);
 
-  const handleSaveNote = () => {
-    onUpdateNote(group.phoneNumber, note);
+  const handleSaveContactNote = () => {
+    onUpdateContactNote(group.phoneNumber, contactNote);
     toast({
       title: 'Note Saved',
       description: `Your note for ${group.contact?.name || group.phoneNumber} has been updated.`,
@@ -77,8 +138,21 @@ export function CallGroupCard({ group, onUpdateNote, onExcludeNumber }: CallGrou
                         <span>{lastCallTime}</span>
                     </div>
                 </div>
-                <div className="text-right">
+                <div className="flex items-center gap-2">
                   <Badge variant="secondary">{group.callCount} {group.callCount > 1 ? 'calls' : 'call'}</Badge>
+                   <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                      <DropdownMenuItem onClick={handleExclude}>
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Exclude
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
             </div>
           </AccordionTrigger>
@@ -86,36 +160,26 @@ export function CallGroupCard({ group, onUpdateNote, onExcludeNumber }: CallGrou
             <div className="space-y-4 px-4 pb-4">
                <div>
                 <h4 className="mb-2 text-sm font-medium text-foreground">Call History</h4>
-                <div className="max-h-40 overflow-y-auto space-y-2 rounded-lg border bg-background/50 p-2">
+                <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-1">
                   {group.calls.map(call => (
-                    <div key={call.id} className="flex items-center justify-between text-xs">
-                       <div className="flex items-center gap-2">
-                        {callTypeIcons[call.type]}
-                        <span className="capitalize">{call.type}</span>
-                       </div>
-                       <span className="text-muted-foreground">{format(call.timestamp, 'MMM d, h:mm a')}</span>
-                    </div>
+                    <CallDetail key={call.id} call={call} onUpdateCallNote={onUpdateCallNote} />
                   ))}
                 </div>
               </div>
               <div>
                 <label htmlFor={`note-${group.phoneNumber}`} className="mb-2 block text-sm font-medium text-foreground">
-                    Persistent Note
+                    Persistent Note for Contact
                 </label>
                 <Textarea
                   id={`note-${group.phoneNumber}`}
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Add a note for this contact..."
+                  value={contactNote}
+                  onChange={(e) => setContactNote(e.target.value)}
+                  placeholder="Add a persistent note for this contact..."
                   className="min-h-[80px]"
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
-                    <Button onClick={handleSaveNote} className="flex-grow">
-                      Save Note
-                    </Button>
-                    <Button onClick={handleExclude} variant="outline" className="flex-grow">
-                      <XCircle className="mr-2 h-4 w-4" />
-                      Exclude
+                    <Button onClick={handleSaveContactNote} className="flex-grow">
+                      Save Contact Note
                     </Button>
                 </div>
               </div>

@@ -14,6 +14,7 @@ export interface Call {
   type: 'incoming' | 'outgoing' | 'missed' | 'rejected';
   timestamp: Date;
   duration: number; // in seconds
+  notes?: string;
 }
 
 const staticContacts: Omit<Contact, 'avatar' | 'notes'>[] = [
@@ -44,6 +45,7 @@ const calls: Call[] = Array.from({ length: 40 }, (_, i) => {
         type: callType,
         timestamp: new Date(Date.now() - (i + 1) * 6 * 3600 * 1000 - Math.random() * 6 * 3600 * 1000), // spread out over the last few days
         duration: callType === 'missed' || callType === 'rejected' ? 0 : Math.floor(Math.random() * 600) + (i % 2 === 0 ? 5 : 0),
+        notes: i === 1 ? 'Discussed the Q3 earnings report.' : undefined,
     };
 });
 
