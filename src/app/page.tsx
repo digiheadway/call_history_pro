@@ -15,6 +15,7 @@ import {
   type Call,
 } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { usePersistentState } from '@/hooks/use-persistent-state';
 
 export type DateRange = {
   from: Date;
@@ -25,12 +26,15 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [allCallers, setAllCallers] = useState<Caller[]>([]);
   const [callsByPhone, setCallsByPhone] = useState<Record<string, Call[]>>({});
-  const [searchQuery, setSearchQuery] = useState('');
 
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+  const [searchQuery, setSearchQuery] = usePersistentState('searchQuery', '');
+  const [activeTab, setActiveTab] = usePersistentState('activeTab', 'all');
+  
+  const [dateRange, setDateRange] = usePersistentState<DateRange | undefined>('dateRange', {
     from: subDays(new Date(), 7),
     to: new Date(),
-  });
+  }, (value) => value ? { from: new Date(value.from), to: new Date(value.to) } : undefined);
+
   const { toast } = useToast();
 
   const fetchAndSetCallers = useCallback(async (range: DateRange | undefined) => {
@@ -212,6 +216,8 @@ export default function Home() {
         onExcludeNumber={handleExcludeNumber}
         allCallers={allCallers}
         setCallsByPhone={setCallsByPhone}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
       />
     </div>
   );

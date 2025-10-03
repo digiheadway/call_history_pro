@@ -1,3 +1,4 @@
+
 'use client';
 
 import type { Caller, Call } from '@/lib/api';
@@ -6,6 +7,7 @@ import { CallGroupCard } from '@/app/components/call-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMemo } from 'react';
 import { Separator } from '@/components/ui/separator';
+import { usePersistentScroll } from '@/hooks/use-persistent-scroll';
 
 export interface CallGroup {
   caller: Caller;
@@ -21,6 +23,8 @@ interface CallLogProps {
   onExcludeNumber: (callerId: string) => void;
   allCallers: Caller[];
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
+  activeTab: string;
+  setActiveTab: (tab: string) => void;
 }
 
 const CallGroupList = ({
@@ -31,6 +35,7 @@ const CallGroupList = ({
   sortedGroupTitles,
   setCallsByPhone,
   tab,
+  scrollAreaRef
 }: {
   groups: Record<string, CallGroup[]>;
   sortedGroupTitles: string[];
@@ -39,37 +44,40 @@ const CallGroupList = ({
   onExcludeNumber: (callerId: string) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   tab: string;
+  scrollAreaRef: React.RefObject<HTMLDivElement>;
 }) => {
   const hasCalls = sortedGroupTitles.some(title => groups[title] && groups[title].length > 0);
 
   return (
-    <div className="space-y-4 p-4 pt-2">
-      {hasCalls ? (
-        sortedGroupTitles.map(title => (
-          groups[title] && groups[title].length > 0 && (
-            <div key={title}>
-              <div className="flex items-center gap-4">
-                <Separator className="flex-1" />
-                <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
-                <Separator className="flex-1" />
+    <ScrollArea className="h-full" viewportRef={scrollAreaRef}>
+      <div className="space-y-4 p-4 pt-2">
+        {hasCalls ? (
+          sortedGroupTitles.map(title => (
+            groups[title] && groups[title].length > 0 && (
+              <div key={title}>
+                <div className="flex items-center gap-4">
+                  <Separator className="flex-1" />
+                  <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+                  <Separator className="flex-1" />
+                </div>
+                <div className="mt-2 space-y-2">
+                  {groups[title].map(group => (
+                    <CallGroupCard
+                      key={group.caller.id}
+                      group={group}
+                      onUpdateContactNote={onUpdateContactNote}
+                      onUpdateCallNote={onUpdateCallNote}
+                      onExcludeNumber={onExcludeNumber}
+                      setCallsByPhone={setCallsByPhone}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="mt-2 space-y-2">
-                {groups[title].map(group => (
-                  <CallGroupCard
-                    key={group.caller.id}
-                    group={group}
-                    onUpdateContactNote={onUpdateContactNote}
-                    onUpdateCallNote={onUpdateCallNote}
-                    onExcludeNumber={onExcludeNumber}
-                    setCallsByPhone={setCallsByPhone}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        ))
-      ) : <NoCallsMessage tab={tab} />}
-    </div>
+            )
+          ))
+        ) : <NoCallsMessage tab={tab} />}
+      </div>
+    </ScrollArea>
   );
 };
 
@@ -87,9 +95,13 @@ export default function CallLog({
     onUpdateCallNote, 
     onExcludeNumber, 
     allCallers,
-    setCallsByPhone
+    setCallsByPhone,
+    activeTab,
+    setActiveTab
 }: CallLogProps) {
   
+  const scrollRef = usePersistentScroll('scrollPos');
+
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title] || []), [groupedCalls, sortedGroupTitles]);
 
   const missedGroups = useMemo(() => {
@@ -151,7 +163,7 @@ export default function CallLog({
 
 
   return (
-    <Tabs defaultValue="all" className="flex flex-1 flex-col overflow-hidden">
+    <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
       <div className="px-4 pt-4 overflow-x-auto">
         <TabsList className="bg-primary/10">
           <TabsTrigger value="all">All</TabsTrigger>
@@ -161,56 +173,52 @@ export default function CallLog({
         </TabsList>
       </div>
       <TabsContent value="all" className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-            <CallGroupList 
-                groups={groupedCalls} 
-                sortedGroupTitles={sortedGroupTitles} 
-                onUpdateContactNote={onUpdateContactNote} 
-                onUpdateCallNote={onUpdateCallNote} 
-                onExcludeNumber={onExcludeNumber}
-                setCallsByPhone={setCallsByPhone}
-                tab="All"
-            />
-        </ScrollArea>
+        <CallGroupList 
+            groups={groupedCalls} 
+            sortedGroupTitles={sortedGroupTitles} 
+            onUpdateContactNote={onUpdateContactNote} 
+            onUpdateCallNote={onUpdateCallNote} 
+            onExcludeNumber={onExcludeNumber}
+            setCallsByPhone={setCallsByPhone}
+            tab="All"
+            scrollAreaRef={scrollRef}
+        />
       </TabsContent>
       <TabsContent value="missed" className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-             <CallGroupList 
-                groups={groupedMissed} 
-                sortedGroupTitles={sortedMissedTitles}
-                onUpdateContactNote={onUpdateContactNote} 
-                onUpdateCallNote={onUpdateCallNote} 
-                onExcludeNumber={onExcludeNumber}
-                setCallsByPhone={setCallsByPhone}
-                tab="Missed"
-            />
-        </ScrollArea>
+         <CallGroupList 
+            groups={groupedMissed} 
+            sortedGroupTitles={sortedMissedTitles}
+            onUpdateContactNote={onUpdateContactNote} 
+            onUpdateCallNote={onUpdateCallNote} 
+            onExcludeNumber={onExcludeNumber}
+            setCallsByPhone={setCallsByPhone}
+            tab="Missed"
+            scrollAreaRef={scrollRef}
+        />
       </TabsContent>
        <TabsContent value="never-attended" className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-             <CallGroupList 
-                groups={groupedNeverAttended} 
-                sortedGroupTitles={sortedNeverAttendedTitles}
-                onUpdateContactNote={onUpdateContactNote} 
-                onUpdateCallNote={onUpdateCallNote} 
-                onExcludeNumber={onExcludeNumber}
-                setCallsByPhone={setCallsByPhone}
-                tab="Never Attended"
-            />
-        </ScrollArea>
+         <CallGroupList 
+            groups={groupedNeverAttended} 
+            sortedGroupTitles={sortedNeverAttendedTitles}
+            onUpdateContactNote={onUpdateContactNote} 
+            onUpdateCallNote={onUpdateCallNote} 
+            onExcludeNumber={onExcludeNumber}
+            setCallsByPhone={setCallsByPhone}
+            tab="Never Attended"
+            scrollAreaRef={scrollRef}
+        />
       </TabsContent>
        <TabsContent value="rejected" className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-            <CallGroupList 
-                groups={groupedRejected} 
-                sortedGroupTitles={sortedRejectedTitles}
-                onUpdateContactNote={onUpdateContactNote} 
-                onUpdateCallNote={onUpdateCallNote} 
-                onExcludeNumber={onExcludeNumber}
-                setCallsByPhone={setCallsByPhone}
-                tab="Rejected"
-            />
-        </ScrollArea>
+        <CallGroupList 
+            groups={groupedRejected} 
+            sortedGroupTitles={sortedRejectedTitles}
+            onUpdateContactNote={onUpdateContactNote} 
+            onUpdateCallNote={onUpdateCallNote} 
+            onExcludeNumber={onExcludeNumber}
+            setCallsByPhone={setCallsByPhone}
+            tab="Rejected"
+            scrollAreaRef={scrollRef}
+        />
       </TabsContent>
     </Tabs>
   );
