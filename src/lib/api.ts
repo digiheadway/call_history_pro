@@ -41,8 +41,8 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
       }
     }
   } else { // POST
+    url.searchParams.append('action', action);
     const formData = new FormData();
-    formData.append('action', action);
     for (const key in params) {
        if (params[key] !== undefined) {
          formData.append(key, String(params[key]));
@@ -80,7 +80,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
 
     return (data.data || data) as T;
   } catch (error) {
-    console.error(`API action "${action}" failed:`, error);
+    console.error(`API action "${action}" with params ${JSON.stringify(params)} failed:`, error);
     throw error;
   }
 }
