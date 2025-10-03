@@ -237,8 +237,7 @@ export function CallGroupCard({
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-4 pb-4">
-              <div className="px-4">
-                <h4 className="mb-2 text-sm font-medium text-foreground">Call History</h4>
+              <div className="px-2 pt-2">
                 <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-2">
                   {isLoadingCalls ? (
                     <div className="flex justify-center items-center p-4">
@@ -262,7 +261,7 @@ export function CallGroupCard({
               <div className="px-4">
                 <div className="flex justify-between items-center mb-2">
                   <label htmlFor={`note-${caller.phone}`} className="block text-sm font-medium text-foreground">
-                    Persistent Note for {caller.phone}
+                  Note for {caller.phone}
                   </label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
