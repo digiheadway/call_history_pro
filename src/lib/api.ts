@@ -63,7 +63,23 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
     if (data.status === 'error') {
         throw new Error(`API Error: ${data.message}`);
     }
-    return data.data || [];
+
+    if (action === 'fetch_callers' && Array.isArray(data.data)) {
+        return data.data.map((caller: any) => ({
+            ...caller,
+            calls: parseInt(caller.calls, 10),
+            last_call_duration: parseInt(caller.last_call_duration, 10),
+            excluded: caller.excluded === '1',
+        })) as T;
+    }
+     if (action === 'fetch_calls' && Array.isArray(data.data)) {
+        return data.data.map((call: any) => ({
+            ...call,
+            duration: parseInt(call.duration, 10),
+        })) as T;
+    }
+
+    return (data.data || []) as T;
   } catch (error) {
     console.error(`API action "${action}" failed:`, error);
     throw error;
