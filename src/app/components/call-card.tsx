@@ -16,6 +16,9 @@ import {
   Clock,
   Loader2,
   Speaker,
+  Phone,
+  MessageCircle,
+  Copy,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -23,7 +26,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AudioPlayer } from './audio-player';
 
 interface CallGroupCardProps {
@@ -90,7 +94,7 @@ function CallDetail({
 
   return (
     <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value={call.id} className="border-0">
+      <AccordionItem value={call.id} className="border-0 overflow-hidden">
         <AccordionTrigger className="flex w-full items-center justify-between text-xs p-2 hover:no-underline hover:bg-accent/50 rounded-md">
           <div className="flex items-center gap-2">
             {callTypeIcons[call.type]}
@@ -152,6 +156,7 @@ export function CallGroupCard({
   const { caller, calls } = group;
   const [contactNote, setContactNote] = useState(caller.note || '');
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
+  const [isExcludeAlertOpen, setIsExcludeAlertOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -179,6 +184,12 @@ export function CallGroupCard({
 
   const handleExclude = () => {
     onExcludeNumber(caller.id);
+    setIsExcludeAlertOpen(false);
+  };
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(caller.phone);
+    toast({ title: "Copied!", description: `${caller.phone} copied to clipboard.` });
   };
   
   const getCallerDisplay = () => {
@@ -228,7 +239,7 @@ export function CallGroupCard({
             <div className="space-y-4 pb-4">
               <div className="px-4">
                 <h4 className="mb-2 text-sm font-medium text-foreground">Call History</h4>
-                <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-1">
+                <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-2">
                   {isLoadingCalls ? (
                     <div className="flex justify-center items-center p-4">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -260,7 +271,24 @@ export function CallGroupCard({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={handleExclude} className="text-destructive">
+                      <DropdownMenuItem asChild>
+                        <a href={`tel:${caller.phone}`} className="flex items-center">
+                          <Phone className="mr-2 h-4 w-4" />
+                          Call
+                        </a>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                         <a href={`https://wa.me/${caller.phone}`} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                          <MessageCircle className="mr-2 h-4 w-4" />
+                           WhatsApp
+                         </a>
+                      </DropdownMenuItem>
+                       <DropdownMenuItem onClick={handleCopy}>
+                        <Copy className="mr-2 h-4 w-4" />
+                        Copy Phone
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setIsExcludeAlertOpen(true)} className="text-destructive">
                         <XCircle className="mr-2 h-4 w-4" />
                         Exclude
                       </DropdownMenuItem>
@@ -284,6 +312,22 @@ export function CallGroupCard({
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+       <AlertDialog open={isExcludeAlertOpen} onOpenChange={setIsExcludeAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently exclude the number <span className="font-semibold text-foreground">{caller.phone}</span> from your call log. You cannot undo this action.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExclude} className="bg-destructive hover:bg-destructive/90">
+              Exclude
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
