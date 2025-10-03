@@ -105,7 +105,7 @@ function CallDetail({
           </div>
         </AccordionTrigger>
         <AccordionContent>
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2 pt-2 px-2 pb-2">
             <div className="sm:hidden pb-2">
               <Badge variant="outline" className="inline-flex items-center gap-1">
                 <Clock className="h-3 w-3" />
@@ -225,8 +225,8 @@ export function CallGroupCard({
             </div>
           </AccordionTrigger>
           <AccordionContent>
-            <div className="space-y-4 px-4 pb-4">
-              <div>
+            <div className="space-y-4 pb-4">
+              <div className="px-4">
                 <h4 className="mb-2 text-sm font-medium text-foreground">Call History</h4>
                 <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-1">
                   {isLoadingCalls ? (
@@ -248,7 +248,7 @@ export function CallGroupCard({
                   )}
                 </div>
               </div>
-              <div>
+              <div className="px-4">
                 <div className="flex justify-between items-center mb-2">
                   <label htmlFor={`note-${caller.phone}`} className="block text-sm font-medium text-foreground">
                     Persistent Note for {caller.phone}
@@ -287,3 +287,5 @@ export function CallGroupCard({
     </Card>
   );
 }
+
+    
