@@ -11,6 +11,7 @@ import {
   XCircle,
   PhoneOff,
   MoreVertical,
+  Clock,
 } from 'lucide-react';
 import {
   Card,
@@ -77,11 +78,20 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call, onUpdateCallNote: 
             </div>
             <div className='flex items-center gap-2'>
                 <span className="text-muted-foreground">{format(call.timestamp, 'MMM d, h:mm a')}</span>
-                <Badge variant="outline" className="hidden sm:inline-flex">{formatDuration(call.duration)}</Badge>
+                <Badge variant="outline" className="hidden sm:inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDuration(call.duration)}
+                </Badge>
             </div>
         </AccordionTrigger>
         <AccordionContent>
           <div className="space-y-2 pt-2">
+             <div className="sm:hidden pb-2">
+                <Badge variant="outline" className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {formatDuration(call.duration)}
+                </Badge>
+            </div>
             <Textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
@@ -124,35 +134,35 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
   }
 
   const lastCallTime = formatDistanceToNow(group.lastCall.timestamp, { addSuffix: true });
+  const notePreview = group.contact?.notes ? group.contact.notes.split(' ').slice(0, 7).join(' ') + (group.contact.notes.split(' ').length > 7 ? '...' : '') : '';
 
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
       <Accordion type="single" collapsible>
         <AccordionItem value="item-1" className="border-b-0">
           <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:bg-accent">
-             <div className="flex w-full items-center gap-4 text-left">
-                <div className="flex-1">
+             <div className="flex w-full items-start gap-4 text-left">
+                <div className="flex-1 space-y-1">
                     <p className="font-semibold text-foreground">{group.contact?.name || group.phoneNumber}</p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         {callTypeIcons[group.lastCall.type]}
                         <span>{lastCallTime}</span>
+                        {(group.lastCall.type !== 'missed' && group.lastCall.type !== 'rejected') && (
+                            <>
+                                <span className='text-xs'>•</span>
+                                <div className='flex items-center gap-1'>
+                                    <Clock className="h-3 w-3" />
+                                    <span>{formatDuration(group.lastCall.duration)}</span>
+                                </div>
+                            </>
+                        )}
                     </div>
+                     {notePreview && (
+                        <p className="text-xs text-muted-foreground pt-1">{notePreview}</p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{group.callCount} {group.callCount > 1 ? 'calls' : 'call'}</Badge>
-                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                      <DropdownMenuItem onClick={handleExclude}>
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Exclude
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </div>
             </div>
           </AccordionTrigger>
@@ -167,9 +177,24 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
                 </div>
               </div>
               <div>
-                <label htmlFor={`note-${group.phoneNumber}`} className="mb-2 block text-sm font-medium text-foreground">
-                    Persistent Note for Contact
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                    <label htmlFor={`note-${group.phoneNumber}`} className="block text-sm font-medium text-foreground">
+                        Persistent Note for Contact
+                    </label>
+                    <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={handleExclude} className="text-destructive">
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Exclude
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
                 <Textarea
                   id={`note-${group.phoneNumber}`}
                   value={contactNote}

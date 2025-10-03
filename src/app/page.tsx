@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { format, isToday, isYesterday, startOfDay, subDays, formatDistanceToNow, differenceInCalendarDays } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
 import PermissionDialog from '@/app/components/permission-dialog';
 import { getInitialCalls, getInitialContacts, type Call, type Contact } from '@/lib/data';
 import { Phone } from 'lucide-react';
+
+export type DateRange = {
+  from: Date;
+  to: Date;
+};
 
 export default function Home() {
   const [permissionsGranted, setPermissionsGranted] = useState(false);
@@ -13,6 +19,10 @@ export default function Home() {
   const [calls, setCalls] = useState<Call[]>([]);
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [excludedNumbers, setExcludedNumbers] = useState<string[]>([]);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(startOfDay(new Date()), 7),
+    to: new Date(),
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 1500);
@@ -46,8 +56,17 @@ export default function Home() {
     setExcludedNumbers((prev) => [...prev, phoneNumber]);
   };
 
+  const filteredCalls = useMemo(() => {
+    if (!dateRange || !dateRange.from) return calls;
+    const toDate = dateRange.to || dateRange.from;
+    return calls.filter(call => {
+      const callDate = call.timestamp;
+      return callDate >= startOfDay(dateRange.from) && callDate <= startOfDay(toDate).setHours(23, 59, 59, 999);
+    });
+  }, [calls, dateRange]);
+
   const callGroups: CallGroup[] = useMemo(() => {
-    const grouped = calls.reduce((acc, call) => {
+    const grouped = filteredCalls.reduce((acc, call) => {
       if (excludedNumbers.includes(call.phoneNumber)) {
         return acc;
       }
@@ -73,7 +92,35 @@ export default function Home() {
         };
       })
       .sort((a, b) => b.lastCall.timestamp.getTime() - a.lastCall.timestamp.getTime());
-  }, [calls, contacts, excludedNumbers]);
+  }, [filteredCalls, contacts, excludedNumbers]);
+
+  const getGroupTitle = useCallback((date: Date) => {
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'MMMM d, yyyy');
+  }, []);
+  
+  const groupedAndSortedCalls = useMemo(() => {
+    return callGroups.reduce((acc, group) => {
+      const title = getGroupTitle(group.lastCall.timestamp);
+      if (!acc[title]) {
+        acc[title] = [];
+      }
+      acc[title].push(group);
+      return acc;
+    }, {} as Record<string, CallGroup[]>);
+  }, [callGroups, getGroupTitle]);
+
+  const sortedGroupTitles = useMemo(() => {
+    return Object.keys(groupedAndSortedCalls).sort((a, b) => {
+      if (a === 'Today') return -1;
+      if (b === 'Today') return 1;
+      if (a === 'Yesterday') return -1;
+      if (b === 'Yesterday') return 1;
+      return new Date(b).getTime() - new Date(a).getTime();
+    });
+  }, [groupedAndSortedCalls]);
+
   
   if (loading) {
     return (
@@ -90,9 +137,10 @@ export default function Home() {
 
   return (
     <div className="flex h-full flex-col">
-      <Header />
+      <Header onDateRangeChange={setDateRange} initialRange={dateRange} />
       <CallLog 
-        callGroups={callGroups} 
+        groupedCalls={groupedAndSortedCalls}
+        sortedGroupTitles={sortedGroupTitles}
         onUpdateContactNote={handleUpdateContactNote}
         onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
