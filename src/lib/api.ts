@@ -1,36 +1,9 @@
+
 // @ts-nocheck
+import type { Caller, Call } from './types';
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
 
-export interface Caller {
-  id: string;
-  phone: string;
-  note: string | null;
-  calls: number;
-  last_call: string;
-  last_call_type: 'incoming' | 'outgoing' | 'missed' | 'rejected';
-  last_call_duration: number;
-  excluded: boolean;
-  lead_id: string | null;
-  lead_name: string | null;
-  segment: string | null;
-  budget: string | null;
-}
-
-export interface Call {
-  id: string;
-  phone: string;
-  note: string | null;
-  duration: number;
-  type: 'incoming' | 'outgoing' | 'missed' | 'rejected';
-  recording_url: string | null;
-  created_ts: string;
-}
-
-interface FetchParams {
-  [key: string]: string | number | boolean | undefined;
-}
-
-async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' | 'POST' = 'GET'): Promise<T> {
+async function apiRequest<T>(action: string, params: Record<string, any>, method: 'GET' | 'POST' = 'GET'): Promise<T> {
   const url = new URL(API_BASE_URL);
   const options: RequestInit = {
     method,
@@ -71,8 +44,8 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
             phone: caller.caller_phone,
             last_call: caller.last_call,
             last_call_type: caller.last_call_type,
-            last_call_duration: parseInt(caller.last_call_duration, 10),
-            note: caller.note,
+            last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
+            note: caller.caller_note,
             excluded: caller.excluded === '1',
             calls: parseInt(caller.calls, 10) || 1,
             lead_id: caller.lead_id,
@@ -84,7 +57,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
      if (action === 'fetch_calls' && Array.isArray(data.data)) {
         return data.data.map((call: any) => ({
             ...call,
-            duration: parseInt(call.duration, 10),
+            duration: parseInt(call.duration, 10) || 0,
         })) as T;
     }
 
@@ -126,3 +99,5 @@ export function updateCallerNote(caller_id: string, note: string): Promise<any> 
 export function updateExcludedStatus(caller_id: string, excluded: boolean): Promise<any> {
   return apiRequest('update_excluded', { caller_id, excluded: excluded ? 1 : 0 }, 'POST');
 }
+
+    

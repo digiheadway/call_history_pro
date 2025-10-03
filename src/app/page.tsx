@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, isToday, isYesterday, subDays, startOfDay } from 'date-fns';
+import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
 import { Phone } from 'lucide-react';
@@ -11,16 +11,11 @@ import {
   updateCallerNote,
   updateCallNote,
   updateExcludedStatus,
-  type Caller,
-  type Call,
 } from '@/lib/api';
+import type { Caller, Call, DateRange, GroupedCalls } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
-
-export type DateRange = {
-  from: Date;
-  to: Date;
-};
+import { subDays } from 'date-fns';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -29,6 +24,7 @@ export default function Home() {
 
   const [searchQuery, setSearchQuery] = usePersistentState('searchQuery', '');
   const [activeTab, setActiveTab] = usePersistentState('activeTab', 'all');
+  const [expandedAccordions, setExpandedAccordions] = usePersistentState<string[]>('expandedAccordions', []);
   
   const [dateRange, setDateRange] = usePersistentState<DateRange | undefined>('dateRange', {
     from: subDays(new Date(), 7),
@@ -36,6 +32,12 @@ export default function Home() {
   }, (value) => value ? { from: new Date(value.from), to: new Date(value.to) } : undefined);
 
   const { toast } = useToast();
+
+  const toggleAccordion = (id: string) => {
+    setExpandedAccordions(prev => 
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
 
   const fetchAndSetCallers = useCallback(async (range: DateRange | undefined) => {
     setLoading(true);
@@ -170,7 +172,7 @@ export default function Home() {
   }, []);
   
   const groupedAndSortedCalls = useMemo(() => {
-    return callGroups.reduce((acc, group) => {
+    const groupsByTitle = callGroups.reduce((acc, group) => {
       const title = getGroupTitle(group.lastCallTimestamp);
       if (!acc[title]) {
         acc[title] = [];
@@ -178,6 +180,20 @@ export default function Home() {
       acc[title].push(group);
       return acc;
     }, {} as Record<string, CallGroup[]>);
+
+    const final: GroupedCalls = {};
+    for (const title in groupsByTitle) {
+        const groups = groupsByTitle[title];
+        const callCount = groups.reduce((sum, g) => sum + g.caller.calls, 0);
+        const callerCount = groups.length;
+        final[title] = {
+            groups: groups,
+            callCount,
+            callerCount
+        };
+    }
+    return final;
+
   }, [callGroups, getGroupTitle]);
 
   const sortedGroupTitles = useMemo(() => {
@@ -218,7 +234,11 @@ export default function Home() {
         setCallsByPhone={setCallsByPhone}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        expandedAccordions={expandedAccordions}
+        toggleAccordion={toggleAccordion}
       />
     </div>
   );
 }
+
+    

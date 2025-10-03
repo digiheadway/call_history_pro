@@ -1,7 +1,8 @@
+
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
-import type { Call, Caller } from '@/lib/api';
+import { useState, useEffect, useRef } from 'react';
+import type { Call, Caller } from '@/lib/types';
 import { fetchCalls } from '@/lib/api';
 import type { CallGroup } from './call-log';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -31,6 +32,8 @@ interface CallGroupCardProps {
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (callerId: string) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }
 
 const callTypeIcons: Record<Call['type'], React.ReactNode> = {
@@ -146,7 +149,7 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call; onUpdateCallNote: 
   );
 }
 
-export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone }: CallGroupCardProps) {
+export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone, isExpanded, onToggleExpand }: CallGroupCardProps) {
   const { caller, calls } = group;
   const [contactNote, setContactNote] = useState(caller.note || '');
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
@@ -157,6 +160,7 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
   }, [caller.note]);
 
   const handleAccordionToggle = async (open: boolean) => {
+    onToggleExpand();
     if (open && calls.length === 0) {
       setIsLoadingCalls(true);
       try {
@@ -192,7 +196,7 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
 
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
-      <Accordion type="single" collapsible onValueChange={(value) => handleAccordionToggle(!!value)}>
+      <Accordion type="single" collapsible value={isExpanded ? caller.id : ''} onValueChange={(value) => handleAccordionToggle(!!value)}>
         <AccordionItem value={caller.id} className="border-b-0">
           <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:bg-accent">
             <div className="flex w-full items-start gap-4 text-left">
@@ -273,3 +277,5 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
     </Card>
   );
 }
+
+    

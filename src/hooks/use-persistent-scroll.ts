@@ -1,6 +1,6 @@
 
 'use client';
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect } from 'react';
 
 export function usePersistentScroll(key: string) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -10,15 +10,23 @@ export function usePersistentScroll(key: string) {
     const scrollable = scrollRef.current;
     if (!scrollable) return;
 
+    let initialPosition: number | null = null;
     try {
       const savedPosition = localStorage.getItem(key);
       if (savedPosition) {
-        scrollable.scrollTop = parseInt(savedPosition, 10);
+        initialPosition = parseInt(savedPosition, 10);
       }
     } catch (error) {
         console.error(`Error reading scroll position for key "${key}":`, error);
     }
     
+    // Defer setting scroll position until after the component has fully rendered
+    const timeoutId = setTimeout(() => {
+        if(scrollable && initialPosition !== null) {
+            scrollable.scrollTop = initialPosition;
+        }
+    }, 0);
+
 
     const handleScroll = () => {
       if (scrollTimeoutRef.current) {
@@ -26,17 +34,22 @@ export function usePersistentScroll(key: string) {
       }
       scrollTimeoutRef.current = setTimeout(() => {
         try {
-            localStorage.setItem(key, scrollable.scrollTop.toString());
+            if(scrollable) {
+                localStorage.setItem(key, scrollable.scrollTop.toString());
+            }
         } catch (error) {
             console.error(`Error setting scroll position for key "${key}":`, error);
         }
-      }, 100);
+      }, 150);
     };
 
-    scrollable.addEventListener('scroll', handleScroll);
+    scrollable.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
-      scrollable.removeEventListener('scroll', handleScroll);
+      clearTimeout(timeoutId);
+      if (scrollable) {
+          scrollable.removeEventListener('scroll', handleScroll);
+      }
       if (scrollTimeoutRef.current) {
         clearTimeout(scrollTimeoutRef.current);
       }
@@ -45,3 +58,5 @@ export function usePersistentScroll(key: string) {
 
   return scrollRef;
 }
+
+    

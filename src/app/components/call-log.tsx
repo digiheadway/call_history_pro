@@ -1,7 +1,7 @@
 
 'use client';
 
-import type { Caller, Call } from '@/lib/api';
+import type { Caller, Call, GroupedCalls } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CallGroupCard } from '@/app/components/call-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,7 +16,7 @@ export interface CallGroup {
 }
 
 interface CallLogProps {
-  groupedCalls: Record<string, CallGroup[]>;
+  groupedCalls: GroupedCalls;
   sortedGroupTitles: string[];
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
@@ -25,19 +25,23 @@ interface CallLogProps {
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  expandedAccordions: string[];
+  toggleAccordion: (id: string) => void;
 }
 
 const CallGroupList = ({
   groups,
+  sortedGroupTitles,
   onUpdateContactNote,
   onUpdateCallNote,
   onExcludeNumber,
-  sortedGroupTitles,
   setCallsByPhone,
   tab,
-  scrollAreaRef
+  scrollAreaRef,
+  expandedAccordions,
+  toggleAccordion
 }: {
-  groups: Record<string, CallGroup[]>;
+  groups: GroupedCalls;
   sortedGroupTitles: string[];
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
@@ -45,23 +49,33 @@ const CallGroupList = ({
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   tab: string;
   scrollAreaRef: React.RefObject<HTMLDivElement>;
+  expandedAccordions: string[];
+  toggleAccordion: (id: string) => void;
 }) => {
-  const hasCalls = sortedGroupTitles.some(title => groups[title] && groups[title].length > 0);
+  const hasCalls = sortedGroupTitles.some(title => groups[title] && groups[title].groups.length > 0);
 
   return (
     <ScrollArea className="h-full" viewportRef={scrollAreaRef}>
       <div className="space-y-4 p-4 pt-2">
         {hasCalls ? (
-          sortedGroupTitles.map(title => (
-            groups[title] && groups[title].length > 0 && (
+          sortedGroupTitles.map(title => {
+            const groupInfo = groups[title];
+            if (!groupInfo || groupInfo.groups.length === 0) return null;
+            
+            const titleText = title.startsWith('Today') || title.startsWith('Yesterday') 
+              ? title.split(' (')[0]
+              : title;
+            const stats = `(${groupInfo.callCount}/${groupInfo.callerCount})`;
+
+            return (
               <div key={title}>
                 <div className="flex items-center gap-4">
                   <Separator className="flex-1" />
-                  <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+                  <h3 className="whitespace-nowrap text-xs font-medium text-muted-foreground">{titleText} <span className="font-normal">{stats}</span></h3>
                   <Separator className="flex-1" />
                 </div>
                 <div className="mt-2 space-y-2">
-                  {groups[title].map(group => (
+                  {groupInfo.groups.map(group => (
                     <CallGroupCard
                       key={group.caller.id}
                       group={group}
@@ -69,12 +83,14 @@ const CallGroupList = ({
                       onUpdateCallNote={onUpdateCallNote}
                       onExcludeNumber={onExcludeNumber}
                       setCallsByPhone={setCallsByPhone}
+                      isExpanded={expandedAccordions.includes(group.caller.id)}
+                      onToggleExpand={() => toggleAccordion(group.caller.id)}
                     />
                   ))}
                 </div>
               </div>
             )
-          ))
+          })
         ) : <NoCallsMessage tab={tab} />}
       </div>
     </ScrollArea>
@@ -97,12 +113,14 @@ export default function CallLog({
     allCallers,
     setCallsByPhone,
     activeTab,
-    setActiveTab
+    setActiveTab,
+    expandedAccordions,
+    toggleAccordion
 }: CallLogProps) {
   
-  const scrollRef = usePersistentScroll('scrollPos');
+  const scrollRef = usePersistentScroll('callLogScroll');
 
-  const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title] || []), [groupedCalls, sortedGroupTitles]);
+  const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
 
   const missedGroups = useMemo(() => {
     // A call was missed, and the user never called that number back.
@@ -134,23 +152,54 @@ export default function CallLog({
     });
   }, [allGroups, allCallers]);
 
-  const filterGroupsByTitle = (groups: CallGroup[]) => {
-    return groups.reduce((acc, group) => {
-      const title = sortedGroupTitles.find(title => groupedCalls[title]?.includes(group));
-      if (title) {
-        if (!acc[title]) {
-          acc[title] = [];
-        }
-        acc[title].push(group);
-      }
-      return acc;
-    }, {} as Record<string, CallGroup[]>);
-  };
+  const maybePendingGroups = useMemo(() => {
+    // Last call duration is below 7 seconds.
+    return allGroups.filter(group => group.caller.last_call_duration < 7);
+  }, [allGroups]);
   
+  const filterGroupsByTitle = (groups: CallGroup[]) => {
+    const titleMap: Record<string, CallGroup[]> = {};
+    for (const title of sortedGroupTitles) {
+        const titleGroups = groupedCalls[title]?.groups || [];
+        for (const group of groups) {
+            if (titleGroups.some(g => g.caller.id === group.caller.id)) {
+                if (!titleMap[title]) {
+                    titleMap[title] = [];
+                }
+                titleMap[title].push(group);
+            }
+        }
+    }
+
+    const result: GroupedCalls = {};
+    for(const title in titleMap) {
+        const subGroups = titleMap[title];
+        result[title] = {
+            groups: subGroups,
+            callCount: subGroups.reduce((acc, g) => acc + g.caller.calls, 0),
+            callerCount: subGroups.length
+        }
+    }
+    return result;
+  };
+
   const getSortedTitlesForGroups = (groups: CallGroup[]) => {
-      const titles = new Set(groups.map(g => sortedGroupTitles.find(title => groupedCalls[title]?.includes(g))).filter(Boolean) as string[]);
+      const titles = new Set(groups.map(g => sortedGroupTitles.find(title => groupedCalls[title]?.groups.includes(g))).filter(Boolean) as string[]);
       return sortedGroupTitles.filter(t => titles.has(t));
   };
+  
+  const connectedGroups = useMemo(() => {
+    const excludedGroupIds = new Set([
+      ...missedGroups.map(g => g.caller.id),
+      ...rejectedGroups.map(g => g.caller.id),
+      ...neverAttendedGroups.map(g => g.caller.id),
+      ...maybePendingGroups.map(g => g.caller.id)
+    ]);
+    return allGroups.filter(g => !excludedGroupIds.has(g.caller.id));
+  }, [allGroups, missedGroups, rejectedGroups, neverAttendedGroups, maybePendingGroups]);
+
+  const groupedConnected = useMemo(() => filterGroupsByTitle(connectedGroups), [connectedGroups, sortedGroupTitles, groupedCalls]);
+  const sortedConnectedTitles = useMemo(() => getSortedTitlesForGroups(connectedGroups), [connectedGroups, sortedGroupTitles, groupedCalls]);
 
   const groupedMissed = useMemo(() => filterGroupsByTitle(missedGroups), [missedGroups, sortedGroupTitles, groupedCalls]);
   const sortedMissedTitles = useMemo(() => getSortedTitlesForGroups(missedGroups), [missedGroups, sortedGroupTitles, groupedCalls]);
@@ -161,65 +210,76 @@ export default function CallLog({
   const groupedNeverAttended = useMemo(() => filterGroupsByTitle(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
   const sortedNeverAttendedTitles = useMemo(() => getSortedTitlesForGroups(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
 
+  const groupedMaybePending = useMemo(() => filterGroupsByTitle(maybePendingGroups), [maybePendingGroups, sortedGroupTitles, groupedCalls]);
+  const sortedMaybePendingTitles = useMemo(() => getSortedTitlesForGroups(maybePendingGroups), [maybePendingGroups, sortedGroupTitles, groupedCalls]);
+
+
+  const listProps = { onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion };
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
-      <div className="px-4 pt-4 overflow-x-auto">
-        <TabsList className="bg-primary/10">
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="missed">Missed</TabsTrigger>
-          <TabsTrigger value="never-attended">Never Attended</TabsTrigger>
-          <TabsTrigger value="rejected">Rejected</TabsTrigger>
-        </TabsList>
+      <div className="overflow-x-auto px-4 pt-4">
+        <div className="inline-block">
+          <TabsList className="bg-primary/10">
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="connected">Connected</TabsTrigger>
+            <TabsTrigger value="missed">Missed</TabsTrigger>
+            <TabsTrigger value="rejected">Rejected</TabsTrigger>
+            <TabsTrigger value="never-attended">Never Attended</TabsTrigger>
+            <TabsTrigger value="maybe-pending">May be Pending</TabsTrigger>
+          </TabsList>
+        </div>
       </div>
       <TabsContent value="all" className="flex-1 overflow-hidden">
         <CallGroupList 
             groups={groupedCalls} 
             sortedGroupTitles={sortedGroupTitles} 
-            onUpdateContactNote={onUpdateContactNote} 
-            onUpdateCallNote={onUpdateCallNote} 
-            onExcludeNumber={onExcludeNumber}
-            setCallsByPhone={setCallsByPhone}
             tab="All"
-            scrollAreaRef={scrollRef}
+            {...listProps}
+        />
+      </TabsContent>
+       <TabsContent value="connected" className="flex-1 overflow-hidden">
+         <CallGroupList 
+            groups={groupedConnected} 
+            sortedGroupTitles={sortedConnectedTitles}
+            tab="Connected"
+            {...listProps}
         />
       </TabsContent>
       <TabsContent value="missed" className="flex-1 overflow-hidden">
          <CallGroupList 
             groups={groupedMissed} 
             sortedGroupTitles={sortedMissedTitles}
-            onUpdateContactNote={onUpdateContactNote} 
-            onUpdateCallNote={onUpdateCallNote} 
-            onExcludeNumber={onExcludeNumber}
-            setCallsByPhone={setCallsByPhone}
             tab="Missed"
-            scrollAreaRef={scrollRef}
+            {...listProps}
         />
       </TabsContent>
        <TabsContent value="never-attended" className="flex-1 overflow-hidden">
          <CallGroupList 
             groups={groupedNeverAttended} 
             sortedGroupTitles={sortedNeverAttendedTitles}
-            onUpdateContactNote={onUpdateContactNote} 
-            onUpdateCallNote={onUpdateCallNote} 
-            onExcludeNumber={onExcludeNumber}
-            setCallsByPhone={setCallsByPhone}
             tab="Never Attended"
-            scrollAreaRef={scrollRef}
+            {...listProps}
         />
       </TabsContent>
        <TabsContent value="rejected" className="flex-1 overflow-hidden">
         <CallGroupList 
             groups={groupedRejected} 
             sortedGroupTitles={sortedRejectedTitles}
-            onUpdateContactNote={onUpdateContactNote} 
-            onUpdateCallNote={onUpdateCallNote} 
-            onExcludeNumber={onExcludeNumber}
-            setCallsByPhone={setCallsByPhone}
             tab="Rejected"
-            scrollAreaRef={scrollRef}
+            {...listProps}
+        />
+      </TabsContent>
+       <TabsContent value="maybe-pending" className="flex-1 overflow-hidden">
+        <CallGroupList 
+            groups={groupedMaybePending} 
+            sortedGroupTitles={sortedMaybePendingTitles}
+            tab="May be Pending"
+            {...listProps}
         />
       </TabsContent>
     </Tabs>
   );
 }
+
+    
