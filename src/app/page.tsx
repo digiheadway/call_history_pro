@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, isToday, isYesterday, startOfDay, subDays, formatDistanceToNow, differenceInCalendarDays } from 'date-fns';
+import { format, isToday, isYesterday, startOfDay, subDays } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
 import PermissionDialog from '@/app/components/permission-dialog';
@@ -20,7 +20,7 @@ export default function Home() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [excludedNumbers, setExcludedNumbers] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
-    from: subDays(startOfDay(new Date()), 7),
+    from: subDays(new Date(), 7),
     to: new Date(),
   });
 

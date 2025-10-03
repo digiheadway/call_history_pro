@@ -103,13 +103,18 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
 
   const groupedRejected = useMemo(() => filterGroupsByTitle(rejectedGroups), [rejectedGroups, sortedGroupTitles, groupedCalls]);
   const sortedRejectedTitles = useMemo(() => getSortedTitlesForGroups(rejectedGroups), [rejectedGroups, sortedGroupTitles, groupedCalls]);
+  
+  const neverAttendedGroups = missedGroups;
+  const groupedNeverAttended = groupedMissed;
+  const sortedNeverAttendedTitles = sortedMissedTitles;
 
   return (
     <Tabs defaultValue="all" className="flex flex-1 flex-col overflow-hidden">
       <div className="px-4 pt-4">
-        <TabsList className="grid w-full grid-cols-3 bg-primary/10">
+        <TabsList className="grid w-full grid-cols-4 bg-primary/10">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="missed">Missed</TabsTrigger>
+          <TabsTrigger value="never-attended">Never Attended</TabsTrigger>
           <TabsTrigger value="rejected">Rejected</TabsTrigger>
         </TabsList>
       </div>
@@ -129,6 +134,17 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
              <CallGroupList 
                 groups={groupedMissed} 
                 sortedGroupTitles={sortedMissedTitles}
+                onUpdateContactNote={onUpdateContactNote} 
+                onUpdateCallNote={onUpdateCallNote} 
+                onExcludeNumber={onExcludeNumber}
+            />
+        </ScrollArea>
+      </TabsContent>
+       <TabsContent value="never-attended" className="flex-1 overflow-hidden">
+        <ScrollArea className="h-full">
+             <CallGroupList 
+                groups={groupedNeverAttended} 
+                sortedGroupTitles={sortedNeverAttendedTitles}
                 onUpdateContactNote={onUpdateContactNote} 
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}

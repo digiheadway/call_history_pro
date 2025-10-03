@@ -27,7 +27,7 @@ export default function Header({ onDateRangeChange, initialRange }: HeaderProps)
   const handlePresetChange = (value: string) => {
     setPreset(value);
     let newRange: AppDateRange | undefined;
-    const to = startOfDay(new Date());
+    const to = new Date();
     switch(value) {
       case '3':
         newRange = { from: subDays(to, 3), to };
