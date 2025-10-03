@@ -63,7 +63,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
     if (data.status === 'error') {
         throw new Error(`API Error: ${data.message}`);
     }
-    return data.data;
+    return data.data || [];
   } catch (error) {
     console.error(`API action "${action}" failed:`, error);
     throw error;

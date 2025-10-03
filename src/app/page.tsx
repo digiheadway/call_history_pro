@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, isToday, isYesterday, startOfDay, subDays } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
-import PermissionDialog from '@/app/components/permission-dialog';
 import { Phone } from 'lucide-react';
 import {
   fetchCallers,
@@ -22,8 +21,6 @@ export type DateRange = {
 };
 
 export default function Home() {
-  // We'll keep the permission flow, but it won't gate the data fetching anymore
-  const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [callers, setCallers] = useState<Caller[]>([]);
   const [callsByPhone, setCallsByPhone] = useState<Record<string, Call[]>>({});
@@ -63,20 +60,8 @@ export default function Home() {
 
 
   useEffect(() => {
-    if (permissionsGranted) {
-        fetchAndSetCallers(dateRange);
-    }
-  }, [permissionsGranted, dateRange, fetchAndSetCallers]);
-
-  useEffect(() => {
-    // This initial loading is for the splash screen
-    const timer = setTimeout(() => {
-      if (!permissionsGranted) {
-        setLoading(false);
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [permissionsGranted]);
+    fetchAndSetCallers(dateRange);
+  }, [dateRange, fetchAndSetCallers]);
 
   const handleUpdateContactNote = async (callerId: string, newNote: string) => {
     try {
@@ -153,7 +138,6 @@ export default function Home() {
           caller: caller,
           calls: callsInGroup,
           lastCallTimestamp: new Date(caller.last_call),
-          // callCount is now directly from the caller object
         };
       })
       .sort((a, b) => b.lastCallTimestamp.getTime() - a.lastCallTimestamp.getTime());
@@ -187,17 +171,13 @@ export default function Home() {
   }, [groupedAndSortedCalls]);
 
   
-  if (loading && !callGroups.length) {
+  if (loading) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-background">
         <Phone className="h-16 w-16 animate-pulse text-primary" />
         <h1 className="mt-4 text-2xl font-bold text-primary">CallSync Notes</h1>
       </div>
     );
-  }
-
-  if (!permissionsGranted) {
-    return <PermissionDialog onAllow={() => setPermissionsGranted(true)} />;
   }
 
   return (
