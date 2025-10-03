@@ -35,7 +35,7 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
     }
     const data = await response.json();
     if (data.status === 'error') {
-        throw new Error(`API Error: ${data.message}`);
+        throw new Error(`API Error: ${data.message || 'Unknown error'}`);
     }
 
     if (action === 'fetch_callers' && Array.isArray(data.data)) {
@@ -47,7 +47,8 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
             note: caller.caller_note,
             excluded: caller.excluded === '1',
-            calls: parseInt(caller.calls, 10) || 1,
+            calls: parseInt(caller.total_calls, 10) || 0,
+            calls_in_range: parseInt(caller.calls_in_range, 10) || 0,
             lead_id: caller.lead_id,
             lead_name: caller.lead_name,
             segment: caller.segment,
@@ -99,5 +100,3 @@ export function updateCallerNote(caller_id: string, note: string): Promise<any> 
 export function updateExcludedStatus(caller_id: string, excluded: boolean): Promise<any> {
   return apiRequest('update_excluded', { caller_id, excluded: excluded ? 1 : 0 }, 'POST');
 }
-
-    

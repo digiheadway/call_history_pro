@@ -27,6 +27,8 @@ interface CallLogProps {
   setActiveTab: (tab: string) => void;
   expandedAccordions: string[];
   toggleAccordion: (id: string) => void;
+  currentlyPlaying: string | null;
+  setCurrentlyPlaying: (id: string | null) => void;
 }
 
 const CallGroupList = ({
@@ -39,7 +41,9 @@ const CallGroupList = ({
   tab,
   scrollAreaRef,
   expandedAccordions,
-  toggleAccordion
+  toggleAccordion,
+  currentlyPlaying,
+  setCurrentlyPlaying
 }: {
   groups: GroupedCalls;
   sortedGroupTitles: string[];
@@ -51,6 +55,8 @@ const CallGroupList = ({
   scrollAreaRef: React.RefObject<HTMLDivElement>;
   expandedAccordions: string[];
   toggleAccordion: (id: string) => void;
+  currentlyPlaying: string | null;
+  setCurrentlyPlaying: (id: string | null) => void;
 }) => {
   const hasCalls = sortedGroupTitles.some(title => groups[title] && groups[title].groups.length > 0);
 
@@ -85,6 +91,8 @@ const CallGroupList = ({
                       setCallsByPhone={setCallsByPhone}
                       isExpanded={expandedAccordions.includes(group.caller.id)}
                       onToggleExpand={() => toggleAccordion(group.caller.id)}
+                      currentlyPlaying={currentlyPlaying}
+                      setCurrentlyPlaying={setCurrentlyPlaying}
                     />
                   ))}
                 </div>
@@ -115,7 +123,9 @@ export default function CallLog({
     activeTab,
     setActiveTab,
     expandedAccordions,
-    toggleAccordion
+    toggleAccordion,
+    currentlyPlaying,
+    setCurrentlyPlaying
 }: CallLogProps) {
   
   const scrollRef = usePersistentScroll('callLogScroll');
@@ -176,7 +186,7 @@ export default function CallLog({
         const subGroups = titleMap[title];
         result[title] = {
             groups: subGroups,
-            callCount: subGroups.reduce((acc, g) => acc + g.caller.calls, 0),
+            callCount: subGroups.reduce((acc, g) => acc + g.caller.calls_in_range, 0),
             callerCount: subGroups.length
         }
     }
@@ -214,7 +224,7 @@ export default function CallLog({
   const sortedMaybePendingTitles = useMemo(() => getSortedTitlesForGroups(maybePendingGroups), [maybePendingGroups, sortedGroupTitles, groupedCalls]);
 
 
-  const listProps = { onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion };
+  const listProps = { onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion, currentlyPlaying, setCurrentlyPlaying };
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
@@ -281,5 +291,3 @@ export default function CallLog({
     </Tabs>
   );
 }
-
-    

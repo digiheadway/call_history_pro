@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
-import { Phone } from 'lucide-react';
+import { Phone, Speaker } from 'lucide-react';
 import {
   fetchCallers,
   updateCallerNote,
@@ -30,6 +30,9 @@ export default function Home() {
     from: subDays(new Date(), 7),
     to: new Date(),
   }, (value) => value ? { from: new Date(value.from), to: new Date(value.to) } : undefined);
+
+  const [currentlyPlaying, setCurrentlyPlaying] = usePersistentState<string | null>('currentlyPlaying', null);
+
 
   const { toast } = useToast();
 
@@ -184,7 +187,7 @@ export default function Home() {
     const final: GroupedCalls = {};
     for (const title in groupsByTitle) {
         const groups = groupsByTitle[title];
-        const callCount = groups.reduce((sum, g) => sum + g.caller.calls, 0);
+        const callCount = groups.reduce((sum, g) => sum + g.caller.calls_in_range, 0);
         const callerCount = groups.length;
         final[title] = {
             groups: groups,
@@ -236,9 +239,9 @@ export default function Home() {
         setActiveTab={setActiveTab}
         expandedAccordions={expandedAccordions}
         toggleAccordion={toggleAccordion}
+        currentlyPlaying={currentlyPlaying}
+        setCurrentlyPlaying={setCurrentlyPlaying}
       />
     </div>
   );
 }
-
-    

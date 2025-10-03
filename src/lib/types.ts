@@ -6,6 +6,7 @@ export interface Caller {
   phone: string;
   note: string | null;
   calls: number;
+  calls_in_range: number;
   last_call: string;
   last_call_type: 'incoming' | 'outgoing' | 'missed' | 'rejected';
   last_call_duration: number;
@@ -36,5 +37,3 @@ export type GroupedCalls = Record<string, {
     callCount: number;
     callerCount: number;
 }>;
-
-    

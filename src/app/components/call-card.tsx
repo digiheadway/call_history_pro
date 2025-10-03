@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { Call, Caller } from '@/lib/types';
 import { fetchCalls } from '@/lib/api';
 import type { CallGroup } from './call-log';
@@ -14,9 +14,8 @@ import {
   PhoneOff,
   MoreVertical,
   Clock,
-  Play,
-  Pause,
   Loader2,
+  Speaker,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -25,6 +24,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AudioPlayer } from './audio-player';
 
 interface CallGroupCardProps {
   group: CallGroup;
@@ -34,6 +34,8 @@ interface CallGroupCardProps {
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  currentlyPlaying: string | null;
+  setCurrentlyPlaying: (id: string | null) => void;
 }
 
 const callTypeIcons: Record<Call['type'], React.ReactNode> = {
@@ -51,55 +53,40 @@ function formatDuration(seconds: number) {
   return [h > 0 ? `${h}h` : '', m > 0 ? `${m}m` : '', s > 0 ? `${s}s` : ''].filter(Boolean).join(' ');
 }
 
-function CallDetail({ call, onUpdateCallNote }: { call: Call; onUpdateCallNote: (callId: string, newNote: string) => void }) {
+function CallDetail({ 
+    call, 
+    onUpdateCallNote,
+    currentlyPlaying,
+    setCurrentlyPlaying,
+}: { 
+    call: Call; 
+    onUpdateCallNote: (callId: string, newNote: string) => void;
+    currentlyPlaying: string | null;
+    setCurrentlyPlaying: (id: string | null) => void;
+}) {
   const [note, setNote] = useState(call.note || '');
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     setNote(call.note || '');
   }, [call.note]);
 
-  useEffect(() => {
-    let recordingUrl = call.recording_url;
-    if (recordingUrl) {
-      // Extract the actual audio file from the `af` query parameter
-      try {
-        const url = new URL(recordingUrl);
-        const audioFile = url.searchParams.get('af');
-        if (audioFile) {
-          recordingUrl = audioFile;
-        }
-      } catch (e) {
-        // Not a valid URL, use it as is
-      }
-      
-      const audio = new Audio(recordingUrl);
-      audioRef.current = audio;
-      const onEnded = () => setIsPlaying(false);
-      audio.addEventListener('ended', onEnded);
-      
-      return () => {
-          audio.pause();
-          audio.removeEventListener('ended', onEnded);
-      };
-    }
-  }, [call.recording_url]);
-
   const handleSaveNote = () => {
     onUpdateCallNote(call.id, note);
   };
-
-  const handleTogglePlay = () => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.pause();
-      } else {
-        audioRef.current.play();
+  
+  let recordingUrl = call.recording_url;
+  if (recordingUrl) {
+    try {
+      const url = new URL(recordingUrl);
+      const audioFile = url.searchParams.get('af');
+      if (audioFile) {
+        recordingUrl = audioFile;
       }
-      setIsPlaying(!isPlaying);
+    } catch (e) {
+      // Not a valid URL, use it as is
     }
-  };
+  }
+
 
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -132,16 +119,18 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call; onUpdateCallNote: 
               className="min-h-[60px] text-xs"
             />
             <div className="flex gap-2">
-              <Button onClick={handleSaveNote} size="sm" className="w-full">
+              <Button onClick={handleSaveNote} size="sm" className="flex-1">
                 Save Call Note
               </Button>
-              {call.recording_url && (
-                <Button onClick={handleTogglePlay} variant="outline" size="sm" className="w-full">
-                  {isPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
-                  {isPlaying ? 'Pause' : 'Play Recording'}
-                </Button>
-              )}
             </div>
+            {recordingUrl && (
+                <AudioPlayer 
+                    src={recordingUrl} 
+                    id={call.id}
+                    currentlyPlaying={currentlyPlaying}
+                    setCurrentlyPlaying={setCurrentlyPlaying}
+                />
+            )}
           </div>
         </AccordionContent>
       </AccordionItem>
@@ -149,7 +138,17 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call; onUpdateCallNote: 
   );
 }
 
-export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone, isExpanded, onToggleExpand }: CallGroupCardProps) {
+export function CallGroupCard({ 
+    group, 
+    onUpdateContactNote, 
+    onUpdateCallNote, 
+    onExcludeNumber, 
+    setCallsByPhone, 
+    isExpanded, 
+    onToggleExpand,
+    currentlyPlaying,
+    setCurrentlyPlaying,
+}: CallGroupCardProps) {
   const { caller, calls } = group;
   const [contactNote, setContactNote] = useState(caller.note || '');
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
@@ -190,9 +189,9 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
     return caller.phone;
   };
 
-
   const lastCallTime = formatDistanceToNow(new Date(caller.last_call), { addSuffix: true });
   const notePreview = caller.note ? caller.note.split(' ').slice(0, 7).join(' ') + (caller.note.split(' ').length > 7 ? '...' : '') : '';
+  const isPlayingInGroup = calls.some(c => c.id === currentlyPlaying);
 
   return (
     <Card className="overflow-hidden transition-all hover:shadow-md">
@@ -201,7 +200,10 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
           <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:bg-accent">
             <div className="flex w-full items-start gap-4 text-left">
               <div className="flex-1 space-y-1">
-                <p className="font-semibold text-foreground">{getCallerDisplay()}</p>
+                <div className="flex items-center gap-2">
+                  {isPlayingInGroup && <Speaker className="h-4 w-4 text-primary animate-pulse" />}
+                  <p className="font-semibold text-foreground">{getCallerDisplay()}</p>
+                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {callTypeIcons[caller.last_call_type]}
                   <span>{lastCallTime}</span>
@@ -218,7 +220,7 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
                 {notePreview && <p className="text-xs text-muted-foreground pt-1">{notePreview}</p>}
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="secondary">{caller.calls} {caller.calls > 1 ? 'calls' : 'call'}</Badge>
+                <Badge variant="secondary">{caller.calls_in_range} {caller.calls_in_range > 1 ? 'calls' : 'call'}</Badge>
               </div>
             </div>
           </AccordionTrigger>
@@ -232,7 +234,15 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
                   ) : calls.length > 0 ? (
-                    calls.map((call) => <CallDetail key={call.id} call={call} onUpdateCallNote={onUpdateCallNote} />)
+                    calls.map((call) => (
+                        <CallDetail 
+                            key={call.id} 
+                            call={call} 
+                            onUpdateCallNote={onUpdateCallNote}
+                            currentlyPlaying={currentlyPlaying}
+                            setCurrentlyPlaying={setCurrentlyPlaying}
+                        />
+                    ))
                   ) : (
                      <p className="p-4 text-center text-sm text-muted-foreground">No call history found.</p>
                   )}
@@ -277,5 +287,3 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
     </Card>
   );
 }
-
-    
