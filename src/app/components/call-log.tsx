@@ -131,7 +131,7 @@ export default function CallLog({
   const scrollRef = usePersistentScroll('callLogScroll');
 
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
-
+  
   // Connected: Talk duration > 5 seconds.
   const connectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_duration > 5), [allGroups]);
 
@@ -141,27 +141,19 @@ export default function CallLog({
   // Rejected: Call was incoming to me and I rejected it.
   const rejectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'rejected'), [allGroups]);
   
-  // Outgoing Not Connected: Outgoing call with 0 duration.
-  const outgoingNotConnectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration === 0), [allGroups]);
-
-  // Never Attended: Incoming call, duration < 3s, and no successful call (>5s) ever.
+  // Never Attended: Outgoing call by you that was not successful (duration 0)
   const neverAttendedGroups = useMemo(() => {
-    return allGroups.filter(group => {
-      const lastCall = group.caller;
-      const isFailedIncoming = lastCall.last_call_type === 'incoming' && lastCall.last_call_duration < 3;
-      if (!isFailedIncoming) return false;
-
-      const hasEverConnected = allCallers.some(c => c.phone === lastCall.phone && c.last_call_duration > 5);
-      return !hasEverConnected;
-    });
-  }, [allGroups, allCallers]);
-
-  // May be Pending: Last call duration is between 1 and 6 seconds.
-  const maybePendingGroups = useMemo(() => {
-    // This is the same as the previous implementation, let's stick to it unless specified otherwise
-    return allGroups.filter(group => group.caller.last_call_duration > 0 && group.caller.last_call_duration < 7);
+    return allGroups.filter(g => g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration === 0);
   }, [allGroups]);
 
+  // May be Pending: Incoming call that was not successful.
+  const mayBePendingGroups = useMemo(() => {
+    const connectedIds = new Set(connectedGroups.map(g => g.caller.id));
+    return allGroups.filter(g => {
+      if (connectedIds.has(g.caller.id)) return false;
+      return g.caller.last_call_type === 'incoming' || g.caller.last_call_type === 'missed' || g.caller.last_call_type === 'rejected';
+    });
+  }, [allGroups, connectedGroups]);
   
   const filterGroupsByTitle = (groups: CallGroup[]) => {
     const titleMap: Record<string, CallGroup[]> = {};
@@ -190,7 +182,15 @@ export default function CallLog({
   };
 
   const getSortedTitlesForGroups = (groups: CallGroup[]) => {
-      const titles = new Set(groups.map(g => sortedGroupTitles.find(title => groupedCalls[title]?.groups.includes(g))).filter(Boolean) as string[]);
+      const titles = new Set<string>();
+      for (const group of groups) {
+          const foundTitle = sortedGroupTitles.find(title => 
+              groupedCalls[title]?.groups.some(g => g.caller.id === group.caller.id)
+          );
+          if (foundTitle) {
+              titles.add(foundTitle);
+          }
+      }
       return sortedGroupTitles.filter(t => titles.has(t));
   };
   
@@ -206,11 +206,8 @@ export default function CallLog({
   const groupedNeverAttended = useMemo(() => filterGroupsByTitle(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
   const sortedNeverAttendedTitles = useMemo(() => getSortedTitlesForGroups(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
 
-  const groupedMaybePending = useMemo(() => filterGroupsByTitle(maybePendingGroups), [maybePendingGroups, sortedGroupTitles, groupedCalls]);
-  const sortedMaybePendingTitles = useMemo(() => getSortedTitlesForGroups(maybePendingGroups), [maybePendingGroups, sortedGroupTitles, groupedCalls]);
-
-  const groupedOutgoingNotConnected = useMemo(() => filterGroupsByTitle(outgoingNotConnectedGroups), [outgoingNotConnectedGroups, sortedGroupTitles, groupedCalls]);
-  const sortedOutgoingNotConnectedTitles = useMemo(() => getSortedTitlesForGroups(outgoingNotConnectedGroups), [outgoingNotConnectedGroups, sortedGroupTitles, groupedCalls]);
+  const groupedMaybePending = useMemo(() => filterGroupsByTitle(mayBePendingGroups), [mayBePendingGroups, sortedGroupTitles, groupedCalls]);
+  const sortedMaybePendingTitles = useMemo(() => getSortedTitlesForGroups(mayBePendingGroups), [mayBePendingGroups, sortedGroupTitles, groupedCalls]);
 
 
   const listProps = { onUpdateContactNote, onUpdateCallNote, onExcludeNumber, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion, currentlyPlaying, setCurrentlyPlaying };
@@ -226,7 +223,6 @@ export default function CallLog({
             <TabsTrigger value="rejected">Rejected</TabsTrigger>
             <TabsTrigger value="never-attended">Never Attended</TabsTrigger>
             <TabsTrigger value="maybe-pending">May be Pending</TabsTrigger>
-            <TabsTrigger value="outgoing-not-connected">Outgoing Not Connected</TabsTrigger>
           </TabsList>
         </div>
       </div>
@@ -278,16 +274,6 @@ export default function CallLog({
             {...listProps}
         />
       </TabsContent>
-      <TabsContent value="outgoing-not-connected" className="flex-1 overflow-hidden">
-        <CallGroupList 
-            groups={groupedOutgoingNotConnected} 
-            sortedGroupTitles={sortedOutgoingNotConnectedTitles}
-            tab="Outgoing Not Connected"
-            {...listProps}
-        />
-      </TabsContent>
     </Tabs>
   );
 }
-
-    
