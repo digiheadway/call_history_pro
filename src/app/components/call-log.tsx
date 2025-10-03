@@ -21,6 +21,7 @@ interface CallLogProps {
   onUpdateContactNote: (phoneNumber: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (phoneNumber: string) => void;
+  calls: Call[];
 }
 
 const CallGroupList = ({
@@ -68,7 +69,7 @@ const NoCallsMessage = ({ tab }: { tab: string }) => (
     </div>
 );
 
-export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateContactNote, onUpdateCallNote, onExcludeNumber }: CallLogProps) {
+export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateContactNote, onUpdateCallNote, onExcludeNumber, calls }: CallLogProps) {
   
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title] || []), [groupedCalls, sortedGroupTitles]);
 
@@ -79,6 +80,14 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
   const rejectedGroups = useMemo(() => allGroups.filter(group => 
     group.calls.some(call => call.type === 'rejected')
   ), [allGroups]);
+  
+  const neverAttendedGroups = useMemo(() => {
+    const answeredNumbers = new Set(calls.filter(c => c.type === 'incoming' || c.type === 'outgoing').map(c => c.phoneNumber));
+    return allGroups.filter(group => 
+        !answeredNumbers.has(group.phoneNumber) &&
+        group.calls.some(c => c.type === 'missed')
+    );
+  }, [allGroups, calls]);
 
   const filterGroupsByTitle = (groups: CallGroup[]) => {
     return groups.reduce((acc, group) => {
@@ -104,14 +113,14 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
   const groupedRejected = useMemo(() => filterGroupsByTitle(rejectedGroups), [rejectedGroups, sortedGroupTitles, groupedCalls]);
   const sortedRejectedTitles = useMemo(() => getSortedTitlesForGroups(rejectedGroups), [rejectedGroups, sortedGroupTitles, groupedCalls]);
   
-  const neverAttendedGroups = missedGroups;
-  const groupedNeverAttended = groupedMissed;
-  const sortedNeverAttendedTitles = sortedMissedTitles;
+  const groupedNeverAttended = useMemo(() => filterGroupsByTitle(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
+  const sortedNeverAttendedTitles = useMemo(() => getSortedTitlesForGroups(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
+
 
   return (
     <Tabs defaultValue="all" className="flex flex-1 flex-col overflow-hidden">
-      <div className="px-4 pt-4">
-        <TabsList className="grid w-full grid-cols-4 bg-primary/10">
+      <div className="px-4 pt-4 overflow-x-auto">
+        <TabsList className="bg-primary/10">
           <TabsTrigger value="all">All</TabsTrigger>
           <TabsTrigger value="missed">Missed</TabsTrigger>
           <TabsTrigger value="never-attended">Never Attended</TabsTrigger>

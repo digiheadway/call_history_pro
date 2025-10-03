@@ -144,6 +144,7 @@ export default function Home() {
         onUpdateContactNote={handleUpdateContactNote}
         onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
+        calls={calls}
       />
     </div>
   );
