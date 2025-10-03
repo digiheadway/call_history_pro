@@ -30,6 +30,7 @@ const CallGroupList = ({
   onExcludeNumber,
   sortedGroupTitles,
   setCallsByPhone,
+  tab,
 }: {
   groups: Record<string, CallGroup[]>;
   sortedGroupTitles: string[];
@@ -37,37 +38,45 @@ const CallGroupList = ({
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (callerId: string) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
-}) => (
-  <div className="space-y-4 p-4 pt-2">
-    {sortedGroupTitles.length > 0 ? (
-      sortedGroupTitles.map(title => (
-        <div key={title}>
-          <div className="flex items-center gap-4">
-            <Separator className="flex-1" />
-            <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
-            <Separator className="flex-1" />
-          </div>
-          <div className="mt-2 space-y-2">
-            {groups[title]?.map(group => (
-              <CallGroupCard
-                key={group.caller.id}
-                group={group}
-                onUpdateContactNote={onUpdateContactNote}
-                onUpdateCallNote={onUpdateCallNote}
-                onExcludeNumber={onExcludeNumber}
-                setCallsByPhone={setCallsByPhone}
-              />
-            ))}
-          </div>
-        </div>
-      ))
-    ) : <NoCallsMessage tab="selected" />}
-  </div>
-);
+  tab: string;
+}) => {
+  const hasCalls = sortedGroupTitles.some(title => groups[title] && groups[title].length > 0);
+
+  return (
+    <div className="space-y-4 p-4 pt-2">
+      {hasCalls ? (
+        sortedGroupTitles.map(title => (
+          groups[title] && groups[title].length > 0 && (
+            <div key={title}>
+              <div className="flex items-center gap-4">
+                <Separator className="flex-1" />
+                <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+                <Separator className="flex-1" />
+              </div>
+              <div className="mt-2 space-y-2">
+                {groups[title].map(group => (
+                  <CallGroupCard
+                    key={group.caller.id}
+                    group={group}
+                    onUpdateContactNote={onUpdateContactNote}
+                    onUpdateCallNote={onUpdateCallNote}
+                    onExcludeNumber={onExcludeNumber}
+                    setCallsByPhone={setCallsByPhone}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        ))
+      ) : <NoCallsMessage tab={tab} />}
+    </div>
+  );
+};
+
 
 const NoCallsMessage = ({ tab }: { tab: string }) => (
     <div className="flex h-64 items-center justify-center text-muted-foreground">
-      <p>No {tab} calls in the selected date range</p>
+      <p>No {tab.toLowerCase()} calls in the selected date range</p>
     </div>
 );
 
@@ -83,25 +92,35 @@ export default function CallLog({
   
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title] || []), [groupedCalls, sortedGroupTitles]);
 
-  const missedGroups = useMemo(() => allGroups.filter(group => 
-    group.caller.last_call_type === 'missed'
-  ), [allGroups]);
-
-  const rejectedGroups = useMemo(() => allGroups.filter(group => 
-     group.caller.last_call_type === 'rejected'
-  ), [allGroups]);
-  
-  const neverAttendedGroups = useMemo(() => {
+  const missedGroups = useMemo(() => {
+    // A call was missed, and the user never called that number back.
     return allGroups.filter(group => {
-      // Logic based on your API structure might be different.
-      // Assuming a `calls` field on the caller object. If not, this needs adjustment.
-      const hasAnswered = allCallers
-        .find(c => c.id === group.caller.id)
-        ?.calls > 0; // Simplified logic, assuming `calls` count implies answered calls.
-      return !hasAnswered && group.caller.last_call_type === 'missed';
+      const wasMissed = group.caller.last_call_type === 'missed';
+      const hasOutgoing = allCallers.some(c => c.phone === group.caller.phone && c.last_call_type === 'outgoing');
+      return wasMissed && !hasOutgoing;
     });
   }, [allGroups, allCallers]);
 
+
+  const neverAttendedGroups = useMemo(() => {
+    // The user missed a call from a number, and although they may have called back, they never connected
+    return allGroups.filter(group => {
+      const hasMissed = group.calls.some(c => c.type === 'missed');
+      if (!hasMissed) return false;
+      
+      const hasConnectedCall = group.calls.some(c => (c.type === 'incoming' || c.type === 'outgoing') && c.duration > 0);
+      return !hasConnectedCall;
+    });
+  }, [allGroups]);
+
+  const rejectedGroups = useMemo(() => {
+    // The user rejected a call and never attempted to call that number back.
+    return allGroups.filter(group => {
+       const wasRejected = group.caller.last_call_type === 'rejected';
+       const hasOutgoing = allCallers.some(c => c.phone === group.caller.phone && c.last_call_type === 'outgoing');
+       return wasRejected && !hasOutgoing;
+    });
+  }, [allGroups, allCallers]);
 
   const filterGroupsByTitle = (groups: CallGroup[]) => {
     return groups.reduce((acc, group) => {
@@ -150,6 +169,7 @@ export default function CallLog({
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
                 setCallsByPhone={setCallsByPhone}
+                tab="All"
             />
         </ScrollArea>
       </TabsContent>
@@ -162,6 +182,7 @@ export default function CallLog({
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
                 setCallsByPhone={setCallsByPhone}
+                tab="Missed"
             />
         </ScrollArea>
       </TabsContent>
@@ -174,6 +195,7 @@ export default function CallLog({
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
                 setCallsByPhone={setCallsByPhone}
+                tab="Never Attended"
             />
         </ScrollArea>
       </TabsContent>
@@ -186,6 +208,7 @@ export default function CallLog({
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
                 setCallsByPhone={setCallsByPhone}
+                tab="Rejected"
             />
         </ScrollArea>
       </TabsContent>

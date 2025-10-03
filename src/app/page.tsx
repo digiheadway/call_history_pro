@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, isToday, isYesterday, startOfDay, subDays } from 'date-fns';
+import { format, isToday, isYesterday, subDays } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
 import { Phone } from 'lucide-react';
@@ -22,8 +22,9 @@ export type DateRange = {
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
-  const [callers, setCallers] = useState<Caller[]>([]);
+  const [allCallers, setAllCallers] = useState<Caller[]>([]);
   const [callsByPhone, setCallsByPhone] = useState<Record<string, Call[]>>({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
@@ -41,10 +42,10 @@ export default function Home() {
           start_date: startDate,
           end_date: endDate,
         });
-        setCallers(fetchedCallers.filter(c => !c.excluded));
+        setAllCallers(fetchedCallers.filter(c => !c.excluded));
       } else {
         const fetchedCallers = await fetchCallers({});
-        setCallers(fetchedCallers.filter(c => !c.excluded));
+        setAllCallers(fetchedCallers.filter(c => !c.excluded));
       }
     } catch (error) {
       console.error('Failed to fetch callers:', error);
@@ -66,7 +67,7 @@ export default function Home() {
   const handleUpdateContactNote = async (callerId: string, newNote: string) => {
     try {
       await updateCallerNote(callerId, newNote);
-      setCallers((prevCallers) =>
+      setAllCallers((prevCallers) =>
         prevCallers.map((caller) =>
           caller.id === callerId ? { ...caller, note: newNote } : caller
         )
@@ -114,7 +115,7 @@ export default function Home() {
   const handleExcludeNumber = async (callerId: string) => {
      try {
       await updateExcludedStatus(callerId, true);
-      setCallers((prev) => prev.filter((c) => c.id !== callerId));
+      setAllCallers((prev) => prev.filter((c) => c.id !== callerId));
       toast({
         title: 'Contact Excluded',
         description: `Contact has been removed from the list.`,
@@ -129,8 +130,21 @@ export default function Home() {
     }
   };
   
+  const filteredCallers = useMemo(() => {
+    if (!searchQuery) {
+      return allCallers;
+    }
+    const lowercasedQuery = searchQuery.toLowerCase();
+    return allCallers.filter(caller => {
+      const name = caller.lead_name || '';
+      const phone = caller.phone || '';
+      return name.toLowerCase().includes(lowercasedQuery) || phone.includes(lowercasedQuery);
+    });
+  }, [allCallers, searchQuery]);
+
+
   const callGroups: CallGroup[] = useMemo(() => {
-    return callers
+    return filteredCallers
       .map((caller) => {
         const callsInGroup = callsByPhone[caller.phone] || [];
         
@@ -141,12 +155,13 @@ export default function Home() {
         };
       })
       .sort((a, b) => b.lastCallTimestamp.getTime() - a.lastCallTimestamp.getTime());
-  }, [callers, callsByPhone]);
+  }, [filteredCallers, callsByPhone]);
 
   const getGroupTitle = useCallback((date: Date) => {
-    if (isToday(date)) return 'Today';
-    if (isYesterday(date)) return 'Yesterday';
-    return format(date, 'MMMM d, yyyy');
+    const startOfDate = startOfDay(date);
+    if (isToday(startOfDate)) return 'Today';
+    if (isYesterday(startOfDate)) return 'Yesterday';
+    return format(startOfDate, 'MMMM d, yyyy');
   }, []);
   
   const groupedAndSortedCalls = useMemo(() => {
@@ -182,14 +197,19 @@ export default function Home() {
 
   return (
     <div className="flex h-full flex-col">
-      <Header onDateRangeChange={setDateRange} initialRange={dateRange} />
+      <Header 
+        onDateRangeChange={setDateRange} 
+        initialRange={dateRange}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+      />
       <CallLog 
         groupedCalls={groupedAndSortedCalls}
         sortedGroupTitles={sortedGroupTitles}
         onUpdateContactNote={handleUpdateContactNote}
         onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
-        allCallers={callers}
+        allCallers={allCallers}
         setCallsByPhone={setCallsByPhone}
       />
     </div>
