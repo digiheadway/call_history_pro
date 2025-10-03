@@ -132,38 +132,39 @@ export default function CallLog({
 
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
 
+  const neverAttendedGroups = useMemo(() => {
+    // never attended is when they attempeted to call me, rejected, missed, or below 3 sec, then i may not be above talk to them above 5 second.
+    return allGroups.filter(group => {
+      const initialAttemptFailed = group.caller.last_call_type === 'missed' || group.caller.last_call_type === 'rejected' || group.caller.last_call_duration < 3;
+      if (!initialAttemptFailed) return false;
+      
+      const everConnected = allCallers.some(c => c.phone === group.caller.phone && c.last_call_duration > 5);
+      return !everConnected;
+    });
+  }, [allGroups, allCallers]);
+  
+  const neverAttendedGroupIds = useMemo(() => new Set(neverAttendedGroups.map(g => g.caller.id)), [neverAttendedGroups]);
+
   const missedGroups = useMemo(() => {
     // A call was missed, and the user never called that number back.
     return allGroups.filter(group => {
+      if(neverAttendedGroupIds.has(group.caller.id)) return false;
       const wasMissed = group.caller.last_call_type === 'missed';
       const hasOutgoing = allCallers.some(c => c.phone === group.caller.phone && c.last_call_type === 'outgoing');
       return wasMissed && !hasOutgoing;
     });
-  }, [allGroups, allCallers]);
+  }, [allGroups, allCallers, neverAttendedGroupIds]);
 
-
-  const neverAttendedGroups = useMemo(() => {
-    // The user missed a call from a number, and although they may have called back, they never connected
-    return allGroups.filter(group => {
-       // Check if there was ever an incoming call.
-      const hasIncoming = allCallers.some(c => c.phone === group.caller.phone && (c.last_call_type === 'incoming' || c.last_call_type === 'missed'));
-      if (!hasIncoming) return false;
-
-      // Check if there was ever a connected call (duration > 0) with this phone number.
-      const hasConnectedCall = allCallers.some(c => c.phone === group.caller.phone && c.last_call_duration > 0);
-      
-      return !hasConnectedCall;
-    });
-  }, [allGroups, allCallers]);
 
   const rejectedGroups = useMemo(() => {
     // The user rejected a call and never attempted to call that number back.
     return allGroups.filter(group => {
+       if(neverAttendedGroupIds.has(group.caller.id)) return false;
        const wasRejected = group.caller.last_call_type === 'rejected';
        const hasOutgoing = allCallers.some(c => c.phone === group.caller.phone && c.last_call_type === 'outgoing');
        return wasRejected && !hasOutgoing;
     });
-  }, [allGroups, allCallers]);
+  }, [allGroups, allCallers, neverAttendedGroupIds]);
 
   const maybePendingGroups = useMemo(() => {
     // Last call duration is below 7 seconds.
@@ -294,5 +295,7 @@ export default function CallLog({
     </Tabs>
   );
 }
+
+    
 
     
