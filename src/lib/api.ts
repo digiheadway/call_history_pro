@@ -54,7 +54,6 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
     options.body = formData;
   }
 
-
   try {
     const response = await fetch(url.toString(), options);
     if (!response.ok) {
@@ -75,7 +74,7 @@ async function apiRequest<T>(action: string, params: FetchParams, method: 'GET' 
             last_call_duration: parseInt(caller.last_call_duration, 10),
             note: caller.note,
             excluded: caller.excluded === '1',
-            calls: parseInt(caller.calls, 10) || 1, // Fallback for calls
+            calls: parseInt(caller.calls, 10) || 1,
             lead_id: caller.lead_id,
             lead_name: caller.lead_name,
             segment: caller.segment,
