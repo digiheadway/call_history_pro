@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Call } from '@/lib/data';
 import type { CallGroup } from './call-log';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -14,6 +14,7 @@ import {
   MoreVertical,
   Clock,
   Play,
+  Pause
 } from 'lucide-react';
 import {
   Card,
@@ -61,21 +62,49 @@ function formatDuration(seconds: number) {
 
 function CallDetail({ call, onUpdateCallNote }: { call: Call, onUpdateCallNote: (callId: string, newNote: string) => void }) {
   const [note, setNote] = useState(call.notes || '');
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     setNote(call.notes || '');
   }, [call.notes]);
 
+  useEffect(() => {
+    if (call.recordingUrl) {
+      if (!audioRef.current) {
+        audioRef.current = new Audio(call.recordingUrl);
+        audioRef.current.addEventListener('ended', () => setIsPlaying(false));
+      } else {
+        // Update src if it changes, though unlikely in this app's context
+        if (audioRef.current.src !== call.recordingUrl) {
+           audioRef.current.src = call.recordingUrl;
+        }
+      }
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.removeEventListener('ended', () => setIsPlaying(false));
+      }
+    };
+  }, [call.recordingUrl]);
+
   const handleSaveNote = () => {
     onUpdateCallNote(call.id, note);
   };
   
-  const handlePlayRecording = () => {
-    if (call.recordingUrl) {
-      const audio = new Audio(call.recordingUrl);
-      audio.play();
+  const handleTogglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
     }
-  }
+  };
 
   return (
     <Accordion type="single" collapsible className="w-full">
@@ -112,9 +141,9 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call, onUpdateCallNote: 
                   Save Call Note
                 </Button>
                 {call.recordingUrl && (
-                    <Button onClick={handlePlayRecording} variant="outline" size="sm" className="w-full">
-                        <Play className="h-4 w-4 mr-2" />
-                        Play Recording
+                    <Button onClick={handleTogglePlay} variant="outline" size="sm" className="w-full">
+                        {isPlaying ? <Pause className="h-4 w-4 mr-2" /> : <Play className="h-4 w-4 mr-2" />}
+                        {isPlaying ? 'Pause' : 'Play Recording'}
                     </Button>
                 )}
             </div>
