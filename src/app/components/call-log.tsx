@@ -137,7 +137,6 @@ export default function CallLog({
       // Condition 1: The last interaction was a failed incoming attempt.
       const lastCall = group.caller;
       const initialAttemptFailed = (
-        lastCall.last_call_type === 'missed' ||
         lastCall.last_call_type === 'rejected' ||
         (lastCall.last_call_type === 'incoming' && lastCall.last_call_duration < 3)
       );
