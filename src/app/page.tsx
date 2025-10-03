@@ -5,8 +5,16 @@ import { format, isToday, isYesterday, startOfDay, subDays } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
 import PermissionDialog from '@/app/components/permission-dialog';
-import { getInitialCalls, getInitialContacts, type Call, type Contact } from '@/lib/data';
 import { Phone } from 'lucide-react';
+import {
+  fetchCallers,
+  updateCallerNote,
+  updateCallNote,
+  updateExcludedStatus,
+  type Caller,
+  type Call,
+} from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 export type DateRange = {
   from: Date;
@@ -14,85 +22,142 @@ export type DateRange = {
 };
 
 export default function Home() {
+  // We'll keep the permission flow, but it won't gate the data fetching anymore
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [calls, setCalls] = useState<Call[]>([]);
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [excludedNumbers, setExcludedNumbers] = useState<string[]>([]);
+  const [callers, setCallers] = useState<Caller[]>([]);
+  const [callsByPhone, setCallsByPhone] = useState<Record<string, Call[]>>({});
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: subDays(new Date(), 7),
     to: new Date(),
   });
+  const { toast } = useToast();
 
-  useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
+  const fetchAndSetCallers = useCallback(async (range: DateRange | undefined) => {
+    setLoading(true);
+    try {
+      if (range && range.from) {
+        const startDate = format(range.from, 'yyyy-MM-dd');
+        const endDate = format(range.to, 'yyyy-MM-dd');
+        const fetchedCallers = await fetchCallers({
+          start_date: startDate,
+          end_date: endDate,
+        });
+        setCallers(fetchedCallers.filter(c => !c.excluded));
+      } else {
+        const fetchedCallers = await fetchCallers({});
+        setCallers(fetchedCallers.filter(c => !c.excluded));
+      }
+    } catch (error) {
+      console.error('Failed to fetch callers:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not fetch call data from the server.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
 
   useEffect(() => {
     if (permissionsGranted) {
-      setCalls(getInitialCalls());
-      setContacts(getInitialContacts());
+        fetchAndSetCallers(dateRange);
     }
+  }, [permissionsGranted, dateRange, fetchAndSetCallers]);
+
+  useEffect(() => {
+    // This initial loading is for the splash screen
+    const timer = setTimeout(() => {
+      if (!permissionsGranted) {
+        setLoading(false);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
   }, [permissionsGranted]);
 
-  const handleUpdateContactNote = (phoneNumber: string, newNote: string) => {
-    setContacts((prevContacts) =>
-      prevContacts.map((contact) =>
-        contact.phoneNumber === phoneNumber ? { ...contact, notes: newNote } : contact
-      )
-    );
+  const handleUpdateContactNote = async (callerId: string, newNote: string) => {
+    try {
+      await updateCallerNote(callerId, newNote);
+      setCallers((prevCallers) =>
+        prevCallers.map((caller) =>
+          caller.id === callerId ? { ...caller, note: newNote } : caller
+        )
+      );
+      toast({
+        title: 'Note Saved',
+        description: 'The contact note has been updated.',
+      });
+    } catch (error) {
+      console.error('Failed to update caller note:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not save the contact note.',
+      });
+    }
+  };
+
+  const handleUpdateCallNote = async (callId: string, newNote: string) => {
+     try {
+      await updateCallNote(callId, newNote);
+      setCallsByPhone(prev => {
+        const newCallsByPhone = { ...prev };
+        for (const phone in newCallsByPhone) {
+          newCallsByPhone[phone] = newCallsByPhone[phone].map(call =>
+            call.id === callId ? { ...call, note: newNote } : call
+          );
+        }
+        return newCallsByPhone;
+      });
+       toast({
+        title: 'Call Note Saved',
+        description: 'The note for this specific call has been updated.',
+      });
+    } catch (error) {
+      console.error('Failed to update call note:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not save the call note.',
+      });
+    }
+  };
+
+  const handleExcludeNumber = async (callerId: string) => {
+     try {
+      await updateExcludedStatus(callerId, true);
+      setCallers((prev) => prev.filter((c) => c.id !== callerId));
+      toast({
+        title: 'Contact Excluded',
+        description: `Contact has been removed from the list.`,
+      });
+    } catch (error) {
+       console.error('Failed to exclude number:', error);
+       toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not exclude the contact.',
+      });
+    }
   };
   
-  const handleUpdateCallNote = (callId: string, newNote: string) => {
-    setCalls((prevCalls) =>
-      prevCalls.map((call) =>
-        call.id === callId ? { ...call, notes: newNote } : call
-      )
-    );
-  };
-
-  const handleExcludeNumber = (phoneNumber: string) => {
-    setExcludedNumbers((prev) => [...prev, phoneNumber]);
-  };
-
-  const filteredCalls = useMemo(() => {
-    if (!dateRange || !dateRange.from) return calls;
-    const toDate = dateRange.to || dateRange.from;
-    return calls.filter(call => {
-      const callDate = call.timestamp;
-      return callDate >= startOfDay(dateRange.from) && callDate <= startOfDay(toDate).setHours(23, 59, 59, 999);
-    });
-  }, [calls, dateRange]);
-
   const callGroups: CallGroup[] = useMemo(() => {
-    const grouped = filteredCalls.reduce((acc, call) => {
-      if (excludedNumbers.includes(call.phoneNumber)) {
-        return acc;
-      }
-      if (!acc[call.phoneNumber]) {
-        acc[call.phoneNumber] = [];
-      }
-      acc[call.phoneNumber].push(call);
-      return acc;
-    }, {} as Record<string, Call[]>);
-
-    return Object.entries(grouped)
-      .map(([phoneNumber, callsInGroup]) => {
-        const contact = contacts.find(c => c.phoneNumber === phoneNumber);
-        callsInGroup.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-        const lastCall = callsInGroup[0];
+    return callers
+      .map((caller) => {
+        const callsInGroup = callsByPhone[caller.phone] || [];
         
         return {
-          phoneNumber,
-          contact,
+          caller: caller,
           calls: callsInGroup,
-          lastCall,
-          callCount: callsInGroup.length
+          lastCallTimestamp: new Date(caller.last_call),
+          // callCount is now directly from the caller object
         };
       })
-      .sort((a, b) => b.lastCall.timestamp.getTime() - a.lastCall.timestamp.getTime());
-  }, [filteredCalls, contacts, excludedNumbers]);
+      .sort((a, b) => b.lastCallTimestamp.getTime() - a.lastCallTimestamp.getTime());
+  }, [callers, callsByPhone]);
 
   const getGroupTitle = useCallback((date: Date) => {
     if (isToday(date)) return 'Today';
@@ -102,7 +167,7 @@ export default function Home() {
   
   const groupedAndSortedCalls = useMemo(() => {
     return callGroups.reduce((acc, group) => {
-      const title = getGroupTitle(group.lastCall.timestamp);
+      const title = getGroupTitle(group.lastCallTimestamp);
       if (!acc[title]) {
         acc[title] = [];
       }
@@ -122,7 +187,7 @@ export default function Home() {
   }, [groupedAndSortedCalls]);
 
   
-  if (loading) {
+  if (loading && !callGroups.length) {
     return (
       <div className="flex h-full flex-col items-center justify-center bg-background">
         <Phone className="h-16 w-16 animate-pulse text-primary" />
@@ -144,7 +209,8 @@ export default function Home() {
         onUpdateContactNote={handleUpdateContactNote}
         onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
-        calls={calls}
+        allCallers={callers}
+        setCallsByPhone={setCallsByPhone}
       />
     </div>
   );

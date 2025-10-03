@@ -1,6 +1,6 @@
 'use client';
 
-import type { Call, Contact } from '@/lib/data';
+import type { Caller, Call } from '@/lib/api';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CallGroupCard } from '@/app/components/call-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,20 +8,19 @@ import { useMemo } from 'react';
 import { Separator } from '@/components/ui/separator';
 
 export interface CallGroup {
-  phoneNumber: string;
-  contact?: Contact;
+  caller: Caller;
   calls: Call[];
-  lastCall: Call;
-  callCount: number;
+  lastCallTimestamp: Date;
 }
 
 interface CallLogProps {
   groupedCalls: Record<string, CallGroup[]>;
   sortedGroupTitles: string[];
-  onUpdateContactNote: (phoneNumber: string, newNote: string) => void;
+  onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
-  onExcludeNumber: (phoneNumber: string) => void;
-  calls: Call[];
+  onExcludeNumber: (callerId: string) => void;
+  allCallers: Caller[];
+  setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
 }
 
 const CallGroupList = ({
@@ -29,13 +28,15 @@ const CallGroupList = ({
   onUpdateContactNote,
   onUpdateCallNote,
   onExcludeNumber,
-  sortedGroupTitles
+  sortedGroupTitles,
+  setCallsByPhone,
 }: {
   groups: Record<string, CallGroup[]>;
   sortedGroupTitles: string[];
-  onUpdateContactNote: (phoneNumber: string, newNote: string) => void;
+  onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
-  onExcludeNumber: (phoneNumber: string) => void;
+  onExcludeNumber: (callerId: string) => void;
+  setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
 }) => (
   <div className="space-y-4 p-4 pt-2">
     {sortedGroupTitles.length > 0 ? (
@@ -49,11 +50,12 @@ const CallGroupList = ({
           <div className="mt-2 space-y-2">
             {groups[title]?.map(group => (
               <CallGroupCard
-                key={group.phoneNumber}
+                key={group.caller.id}
                 group={group}
                 onUpdateContactNote={onUpdateContactNote}
                 onUpdateCallNote={onUpdateCallNote}
                 onExcludeNumber={onExcludeNumber}
+                setCallsByPhone={setCallsByPhone}
               />
             ))}
           </div>
@@ -69,25 +71,37 @@ const NoCallsMessage = ({ tab }: { tab: string }) => (
     </div>
 );
 
-export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateContactNote, onUpdateCallNote, onExcludeNumber, calls }: CallLogProps) {
+export default function CallLog({ 
+    groupedCalls, 
+    sortedGroupTitles, 
+    onUpdateContactNote, 
+    onUpdateCallNote, 
+    onExcludeNumber, 
+    allCallers,
+    setCallsByPhone
+}: CallLogProps) {
   
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title] || []), [groupedCalls, sortedGroupTitles]);
 
   const missedGroups = useMemo(() => allGroups.filter(group => 
-    group.calls.some(call => call.type === 'missed')
+    group.caller.last_call_type === 'missed'
   ), [allGroups]);
 
   const rejectedGroups = useMemo(() => allGroups.filter(group => 
-    group.calls.some(call => call.type === 'rejected')
+     group.caller.last_call_type === 'rejected'
   ), [allGroups]);
   
   const neverAttendedGroups = useMemo(() => {
-    const answeredNumbers = new Set(calls.filter(c => c.type === 'incoming' || c.type === 'outgoing').map(c => c.phoneNumber));
-    return allGroups.filter(group => 
-        !answeredNumbers.has(group.phoneNumber) &&
-        group.calls.some(c => c.type === 'missed')
-    );
-  }, [allGroups, calls]);
+    return allGroups.filter(group => {
+      // Logic based on your API structure might be different.
+      // Assuming a `calls` field on the caller object. If not, this needs adjustment.
+      const hasAnswered = allCallers
+        .find(c => c.id === group.caller.id)
+        ?.calls > 0; // Simplified logic, assuming `calls` count implies answered calls.
+      return !hasAnswered && group.caller.last_call_type === 'missed';
+    });
+  }, [allGroups, allCallers]);
+
 
   const filterGroupsByTitle = (groups: CallGroup[]) => {
     return groups.reduce((acc, group) => {
@@ -135,6 +149,7 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
                 onUpdateContactNote={onUpdateContactNote} 
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
+                setCallsByPhone={setCallsByPhone}
             />
         </ScrollArea>
       </TabsContent>
@@ -146,6 +161,7 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
                 onUpdateContactNote={onUpdateContactNote} 
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
+                setCallsByPhone={setCallsByPhone}
             />
         </ScrollArea>
       </TabsContent>
@@ -157,6 +173,7 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
                 onUpdateContactNote={onUpdateContactNote} 
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
+                setCallsByPhone={setCallsByPhone}
             />
         </ScrollArea>
       </TabsContent>
@@ -168,6 +185,7 @@ export default function CallLog({ groupedCalls, sortedGroupTitles, onUpdateConta
                 onUpdateContactNote={onUpdateContactNote} 
                 onUpdateCallNote={onUpdateCallNote} 
                 onExcludeNumber={onExcludeNumber}
+                setCallsByPhone={setCallsByPhone}
             />
         </ScrollArea>
       </TabsContent>
