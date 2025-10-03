@@ -177,7 +177,7 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
           <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:bg-accent">
             <div className="flex w-full items-start gap-4 text-left">
               <div className="flex-1 space-y-1">
-                <p className="font-semibold text-foreground">{`Contact ${caller.phone.slice(-4)}`}</p>
+                <p className="font-semibold text-foreground">{caller.phone}</p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   {callTypeIcons[caller.last_call_type]}
                   <span>{lastCallTime}</span>
@@ -217,7 +217,7 @@ export function CallGroupCard({ group, onUpdateContactNote, onUpdateCallNote, on
               <div>
                 <div className="flex justify-between items-center mb-2">
                   <label htmlFor={`note-${caller.phone}`} className="block text-sm font-medium text-foreground">
-                    Persistent Note for Contact
+                    Persistent Note for {caller.phone}
                   </label>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
