@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -12,6 +13,7 @@ import {
   PhoneOff,
   MoreVertical,
   Clock,
+  Play,
 } from 'lucide-react';
 import {
   Card,
@@ -68,6 +70,13 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call, onUpdateCallNote: 
     onUpdateCallNote(call.id, note);
   };
   
+  const handlePlayRecording = () => {
+    if (call.recordingUrl) {
+      const audio = new Audio(call.recordingUrl);
+      audio.play();
+    }
+  }
+
   return (
     <Accordion type="single" collapsible className="w-full">
       <AccordionItem value={call.id} className="border-0">
@@ -98,9 +107,17 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call, onUpdateCallNote: 
               placeholder="Add a note for this specific call..."
               className="min-h-[60px] text-xs"
             />
-            <Button onClick={handleSaveNote} size="sm" className="w-full">
-              Save Call Note
-            </Button>
+            <div className="flex gap-2">
+                <Button onClick={handleSaveNote} size="sm" className="w-full">
+                  Save Call Note
+                </Button>
+                {call.recordingUrl && (
+                    <Button onClick={handlePlayRecording} variant="outline" size="sm" className="w-full">
+                        <Play className="h-4 w-4 mr-2" />
+                        Play Recording
+                    </Button>
+                )}
+            </div>
           </div>
         </AccordionContent>
       </AccordionItem>
