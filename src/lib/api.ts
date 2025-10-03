@@ -47,7 +47,7 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
             last_call: caller.last_call,
             last_call_type: caller.last_call_type,
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
-            note: caller.caller_note,
+            note: caller.note,
             excluded: caller.excluded === '1',
             calls_in_range: parseInt(caller.calls, 10) || 0,
             lead_id: caller.lead_id,
