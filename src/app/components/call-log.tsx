@@ -145,13 +145,16 @@ export default function CallLog({
   const neverAttendedGroups = useMemo(() => {
     // The user missed a call from a number, and although they may have called back, they never connected
     return allGroups.filter(group => {
-      const hasMissed = group.calls.some(c => c.type === 'missed');
-      if (!hasMissed) return false;
+       // Check if there was ever an incoming call.
+      const hasIncoming = allCallers.some(c => c.phone === group.caller.phone && (c.last_call_type === 'incoming' || c.last_call_type === 'missed'));
+      if (!hasIncoming) return false;
+
+      // Check if there was ever a connected call (duration > 0) with this phone number.
+      const hasConnectedCall = allCallers.some(c => c.phone === group.caller.phone && c.last_call_duration > 0);
       
-      const hasConnectedCall = group.calls.some(c => (c.type === 'incoming' || c.type === 'outgoing') && c.duration > 0);
       return !hasConnectedCall;
     });
-  }, [allGroups]);
+  }, [allGroups, allCallers]);
 
   const rejectedGroups = useMemo(() => {
     // The user rejected a call and never attempted to call that number back.
@@ -164,7 +167,7 @@ export default function CallLog({
 
   const maybePendingGroups = useMemo(() => {
     // Last call duration is below 7 seconds.
-    return allGroups.filter(group => group.caller.last_call_duration < 7);
+    return allGroups.filter(group => group.caller.last_call_duration > 0 && group.caller.last_call_duration < 7);
   }, [allGroups]);
   
   const filterGroupsByTitle = (groups: CallGroup[]) => {
@@ -205,7 +208,7 @@ export default function CallLog({
       ...neverAttendedGroups.map(g => g.caller.id),
       ...maybePendingGroups.map(g => g.caller.id)
     ]);
-    return allGroups.filter(g => !excludedGroupIds.has(g.caller.id));
+    return allGroups.filter(g => !excludedGroupIds.has(g.caller.id) && g.caller.last_call_duration > 0);
   }, [allGroups, missedGroups, rejectedGroups, neverAttendedGroups, maybePendingGroups]);
 
   const groupedConnected = useMemo(() => filterGroupsByTitle(connectedGroups), [connectedGroups, sortedGroupTitles, groupedCalls]);
@@ -291,3 +294,5 @@ export default function CallLog({
     </Tabs>
   );
 }
+
+    
