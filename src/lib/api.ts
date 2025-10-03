@@ -49,8 +49,7 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
             note: caller.caller_note,
             excluded: caller.excluded === '1',
-            calls: parseInt(caller.total_calls, 10) || 0, // This may or may not exist, keeping for safety
-            calls_in_range: parseInt(caller.calls, 10) || 0, // Correctly map 'calls' to 'calls_in_range'
+            calls_in_range: parseInt(caller.calls, 10) || 0,
             lead_id: caller.lead_id,
             lead_name: caller.lead_name,
             segment: caller.segment,
@@ -95,8 +94,8 @@ export function updateCallNote(id: string, note: string): Promise<any> {
   return apiRequest('update_call_note', { id, note }, 'POST');
 }
 
-export function updateCallerNote(caller_id: string, note: string): Promise<any> {
-  return apiRequest('update_caller_note', { caller_id, note }, 'POST');
+export function updateCallerNote(id: string, note: string): Promise<any> {
+  return apiRequest('update_caller_note', { caller_id: id, note }, 'POST');
 }
 
 export function updateExcludedStatus(caller_id: string, excluded: boolean): Promise<any> {
