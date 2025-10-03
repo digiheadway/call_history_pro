@@ -58,17 +58,28 @@ function CallDetail({ call, onUpdateCallNote }: { call: Call; onUpdateCallNote: 
   }, [call.note]);
 
   useEffect(() => {
-    const recordingUrl = call.recording_url;
+    let recordingUrl = call.recording_url;
     if (recordingUrl) {
-        const audio = new Audio(recordingUrl);
-        audioRef.current = audio;
-        const onEnded = () => setIsPlaying(false);
-        audio.addEventListener('ended', onEnded);
-        
-        return () => {
-            audio.pause();
-            audio.removeEventListener('ended', onEnded);
-        };
+      // Extract the actual audio file from the `af` query parameter
+      try {
+        const url = new URL(recordingUrl);
+        const audioFile = url.searchParams.get('af');
+        if (audioFile) {
+          recordingUrl = audioFile;
+        }
+      } catch (e) {
+        // Not a valid URL, use it as is
+      }
+      
+      const audio = new Audio(recordingUrl);
+      audioRef.current = audio;
+      const onEnded = () => setIsPlaying(false);
+      audio.addEventListener('ended', onEnded);
+      
+      return () => {
+          audio.pause();
+          audio.removeEventListener('ended', onEnded);
+      };
     }
   }, [call.recording_url]);
 
