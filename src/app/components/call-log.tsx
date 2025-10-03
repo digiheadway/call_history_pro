@@ -133,12 +133,23 @@ export default function CallLog({
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
 
   const neverAttendedGroups = useMemo(() => {
-    // never attended is when they attempeted to call me, rejected, missed, or below 3 sec, then i may not be above talk to them above 5 second.
     return allGroups.filter(group => {
-      const initialAttemptFailed = group.caller.last_call_type === 'missed' || group.caller.last_call_type === 'rejected' || group.caller.last_call_duration < 3;
+      // Condition 1: The last interaction was a failed incoming attempt.
+      const lastCall = group.caller;
+      const initialAttemptFailed = (
+        lastCall.last_call_type === 'missed' ||
+        lastCall.last_call_type === 'rejected' ||
+        (lastCall.last_call_type === 'incoming' && lastCall.last_call_duration < 3)
+      );
+
       if (!initialAttemptFailed) return false;
+
+      // Condition 2: Check if there has ever been a successful call (>= 5s) with this number.
+      // This check needs to scan all callers associated with this phone number.
+      const everConnected = allCallers.some(c => 
+        c.phone === lastCall.phone && c.last_call_duration >= 5
+      );
       
-      const everConnected = allCallers.some(c => c.phone === group.caller.phone && c.last_call_duration > 5);
       return !everConnected;
     });
   }, [allGroups, allCallers]);
@@ -167,7 +178,7 @@ export default function CallLog({
   }, [allGroups, allCallers, neverAttendedGroupIds]);
 
   const maybePendingGroups = useMemo(() => {
-    // Last call duration is below 7 seconds.
+    // Last call duration is between 1 and 6 seconds.
     return allGroups.filter(group => group.caller.last_call_duration > 0 && group.caller.last_call_duration < 7);
   }, [allGroups]);
   
@@ -295,7 +306,3 @@ export default function CallLog({
     </Tabs>
   );
 }
-
-    
-
-    
