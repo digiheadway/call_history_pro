@@ -3,7 +3,7 @@
 import { Phone, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import type { DateRange as AppDateRange, ContactFilter, SyncFilter } from '@/app/page';
+import type { DateRange as AppDateRange, ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
 import FilterPanel from './filter-panel';
 
 interface HeaderProps {
@@ -15,6 +15,8 @@ interface HeaderProps {
     setContactFilter: (filter: ContactFilter) => void;
     syncFilter: SyncFilter;
     setSyncFilter: (filter: SyncFilter) => void;
+    noteFilter: NoteFilter;
+    setNoteFilter: (filter: NoteFilter) => void;
 }
 
 export default function Header({ 
@@ -26,6 +28,8 @@ export default function Header({
     setContactFilter,
     syncFilter,
     setSyncFilter,
+    noteFilter,
+    setNoteFilter,
 }: HeaderProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   
@@ -54,9 +58,9 @@ export default function Header({
         setContactFilter={setContactFilter}
         syncFilter={syncFilter}
         setSyncFilter={setSyncFilter}
+        noteFilter={noteFilter}
+        setNoteFilter={setNoteFilter}
       />
     </>
   );
 }
-
-    

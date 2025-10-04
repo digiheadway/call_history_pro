@@ -8,7 +8,7 @@ import { useState } from "react";
 import { DateRange } from "react-day-picker";
 import { format, subDays, startOfToday, startOfYesterday } from 'date-fns';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
-import type { DateRange as AppDateRange, ContactFilter, SyncFilter } from '@/app/page';
+import type { DateRange as AppDateRange, ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -25,6 +25,8 @@ interface FilterPanelProps {
   setContactFilter: (filter: ContactFilter) => void;
   syncFilter: SyncFilter;
   setSyncFilter: (filter: SyncFilter) => void;
+  noteFilter: NoteFilter;
+  setNoteFilter: (filter: NoteFilter) => void;
 }
 
 export default function FilterPanel({
@@ -38,6 +40,8 @@ export default function FilterPanel({
   setContactFilter,
   syncFilter,
   setSyncFilter,
+  noteFilter,
+  setNoteFilter,
 }: FilterPanelProps) {
   const [date, setDate] = useState<DateRange | undefined>(initialRange);
   const [preset, setPreset] = useState<string>("7");
@@ -199,7 +203,8 @@ export default function FilterPanel({
                   <SelectContent>
                     <SelectItem value="all">All Contacts</SelectItem>
                     <SelectItem value="leads">Leads Only</SelectItem>
-                    <SelectItem value="unsaved">Unsaved Only</SelectItem>
+                    <SelectItem value="custom">Custom Only</SelectItem>
+                    <SelectItem value="no-info">No Info Only</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -216,6 +221,19 @@ export default function FilterPanel({
                   </SelectContent>
                 </Select>
               </div>
+               <div>
+                <Label className="text-sm font-medium text-foreground">Person Note</Label>
+                 <Select value={noteFilter} onValueChange={value => setNoteFilter(value as NoteFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by note status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="with-note">With Note</SelectItem>
+                    <SelectItem value="without-note">Without Note</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
         </div>
         <div className="absolute bottom-4 right-4 left-4">
@@ -225,5 +243,3 @@ export default function FilterPanel({
     </Sheet>
   );
 }
-
-    

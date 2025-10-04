@@ -5,7 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
-import { Phone } from 'lucide-react';
+import { Phone, Loader2 } from 'lucide-react';
 import {
   fetchCallers,
   updateCallerNote,
@@ -19,8 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { subDays } from 'date-fns';
 
-export type ContactFilter = 'all' | 'leads' | 'unsaved';
+export type ContactFilter = 'all' | 'leads' | 'unsaved' | 'custom' | 'no-info';
 export type SyncFilter = 'all' | 'done' | 'undone';
+export type NoteFilter = 'all' | 'with-note' | 'without-note';
+
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -39,6 +41,7 @@ export default function Home() {
   const [currentlyPlaying, setCurrentlyPlaying] = usePersistentState<string | null>('currentlyPlaying', null);
   const [contactFilter, setContactFilter] = usePersistentState<ContactFilter>('contactFilter', 'all');
   const [syncFilter, setSyncFilter] = usePersistentState<SyncFilter>('syncFilter', 'all');
+  const [noteFilter, setNoteFilter] = usePersistentState<NoteFilter>('noteFilter', 'all');
 
 
   const { toast } = useToast();
@@ -218,9 +221,12 @@ export default function Home() {
     // Contact Filter
     if (contactFilter === 'leads') {
         callers = callers.filter(caller => !!caller.lead_id);
-    } else if (contactFilter === 'unsaved') {
+    } else if (contactFilter === 'custom') {
+        callers = callers.filter(caller => !!caller.custom_name || !!caller.caller_type);
+    } else if (contactFilter === 'no-info') {
         callers = callers.filter(caller => !caller.lead_id && !caller.custom_name && !caller.caller_type);
     }
+
 
     // Sync Filter
     if (syncFilter === 'done') {
@@ -228,9 +234,16 @@ export default function Home() {
     } else if (syncFilter === 'undone') {
         callers = callers.filter(caller => !caller.last_sync);
     }
+
+    // Note Filter
+    if (noteFilter === 'with-note') {
+        callers = callers.filter(caller => caller.note && caller.note.trim() !== '');
+    } else if (noteFilter === 'without-note') {
+        callers = callers.filter(caller => !caller.note || caller.note.trim() === '');
+    }
     
     return callers;
-  }, [allCallers, searchQuery, contactFilter, syncFilter]);
+  }, [allCallers, searchQuery, contactFilter, syncFilter, noteFilter]);
 
 
   const callGroups: CallGroup[] = useMemo(() => {
@@ -290,15 +303,6 @@ export default function Home() {
   }, [groupedAndSortedCalls]);
 
   
-  if (loading) {
-    return (
-      <div className="flex h-full flex-col items-center justify-center bg-background">
-        <Phone className="h-16 w-16 animate-pulse text-primary" />
-        <h1 className="mt-4 text-2xl font-bold text-primary">CallSync Notes</h1>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full flex-col">
       <Header 
@@ -310,26 +314,32 @@ export default function Home() {
         setContactFilter={setContactFilter}
         syncFilter={syncFilter}
         setSyncFilter={setSyncFilter}
+        noteFilter={noteFilter}
+        setNoteFilter={setNoteFilter}
       />
-      <CallLog 
-        groupedCalls={groupedAndSortedCalls}
-        sortedGroupTitles={sortedGroupTitles}
-        onUpdateContactNote={handleUpdateContactNote}
-        onUpdateCallNote={handleUpdateCallNote}
-        onExcludeNumber={handleExcludeNumber}
-        onMarkSynced={handleMarkSynced}
-        onUpdateCallerInfo={handleUpdateCallerInfo}
-        allCallers={allCallers}
-        setCallsByPhone={setCallsByPhone}
-        activeTab={activeTab}
-        setActiveTab={setActiveTab}
-        expandedAccordions={expandedAccordions}
-        toggleAccordion={toggleAccordion}
-        currentlyPlaying={currentlyPlaying}
-        setCurrentlyPlaying={setCurrentlyPlaying}
-      />
+      {loading ? (
+        <div className="flex flex-1 items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <CallLog 
+            groupedCalls={groupedAndSortedCalls}
+            sortedGroupTitles={sortedGroupTitles}
+            onUpdateContactNote={handleUpdateContactNote}
+            onUpdateCallNote={handleUpdateCallNote}
+            onExcludeNumber={handleExcludeNumber}
+            onMarkSynced={handleMarkSynced}
+            onUpdateCallerInfo={handleUpdateCallerInfo}
+            allCallers={allCallers}
+            setCallsByPhone={setCallsByPhone}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            expandedAccordions={expandedAccordions}
+            toggleAccordion={toggleAccordion}
+            currentlyPlaying={currentlyPlaying}
+            setCurrentlyPlaying={setCurrentlyPlaying}
+        />
+      )}
     </div>
   );
 }
-
-    
