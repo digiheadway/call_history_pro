@@ -68,11 +68,9 @@ export default function FilterPanel({
   syncFilter,
   setSyncFilter
 }: FilterPanelProps) {
-  const [date, setDate] = useState<DateRange | undefined>(initialRange);
   const [preset, setPreset] = useState<string>('range');
   
   useEffect(() => {
-    setDate(initialRange);
     const newPreset = getPresetFromRange(initialRange);
     setPreset(newPreset);
   }, [initialRange]);
@@ -105,40 +103,46 @@ export default function FilterPanel({
         break;
       case 'day':
       case 'range':
-        setDate(undefined);
-        onDateRangeChange(undefined);
+        // Let user pick dates, don't change range yet
+        // If there's an existing date, clear it so they start fresh
+        if (initialRange) onDateRangeChange(undefined);
         return;
       default:
         newRange = undefined;
     }
     
-    setDate(newRange);
     if (newRange?.from) {
         onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to || newRange.from) });
+    } else {
+        onDateRangeChange(undefined);
     }
   }
 
   const handleSingleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value ? parseISO(e.target.value) : undefined;
-    const newRange = newDate ? { from: newDate, to: newDate } : undefined;
-    setDate(newRange);
-    if(newRange?.from) {
-        onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.from) });
+    if (newDate) {
+      onDateRangeChange({ from: startOfDay(newDate), to: endOfDay(newDate) });
+    } else {
+      onDateRangeChange(undefined);
     }
   }
 
   const handleRangeDateChange = (part: 'from' | 'to', value: string) => {
     const newDate = value ? parseISO(value) : undefined;
+    const currentFrom = initialRange?.from;
+    const currentTo = initialRange?.to;
     let newRange: DateRange | undefined;
-    if (part === 'from') {
-        newRange = { from: newDate, to: date?.to };
-    } else {
-        newRange = { from: date?.from, to: newDate };
-    }
-    setDate(newRange);
 
+    if (part === 'from') {
+        newRange = { from: newDate, to: currentTo };
+    } else {
+        newRange = { from: currentFrom, to: newDate };
+    }
+    
     if (newRange.from && newRange.to) {
          onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to) });
+    } else {
+        onDateRangeChange(newRange);
     }
   }
 
@@ -192,7 +196,7 @@ export default function FilterPanel({
                   {preset === 'day' && (
                     <Input
                         type="date"
-                        value={formatDateForInput(date?.from)}
+                        value={formatDateForInput(initialRange?.from)}
                         onChange={handleSingleDateChange}
                     />
                   )}
@@ -201,14 +205,16 @@ export default function FilterPanel({
                       <div className="flex items-center gap-2">
                           <Input
                               type="date"
-                              value={formatDateForInput(date?.from)}
+                              value={formatDateForInput(initialRange?.from)}
                               onChange={(e) => handleRangeDateChange('from', e.target.value)}
+                              max={initialRange?.to ? formatDateForInput(initialRange.to) : undefined}
                           />
                           <span>to</span>
                           <Input
                               type="date"
-                              value={formatDateForInput(date?.to)}
+                              value={formatDateForInput(initialRange?.to)}
                               onChange={(e) => handleRangeDateChange('to', e.target.value)}
+                              min={initialRange?.from ? formatDateForInput(initialRange.from) : undefined}
                           />
                       </div>
                   )}
