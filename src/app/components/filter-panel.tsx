@@ -145,11 +145,11 @@ export default function FilterPanel({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="overflow-y-auto">
+      <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="flex flex-col">
         <SheetHeader>
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-6 pb-16">
+        <div className="flex-grow mt-6 space-y-6 overflow-y-auto">
             <div>
               <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
               <div className="relative">
@@ -297,11 +297,10 @@ export default function FilterPanel({
               </div>
             </div>
         </div>
-        <div className="absolute bottom-4 right-4 left-4">
+        <div className="mt-auto p-4">
              <Button onClick={onClose} className="w-full">Done</Button>
         </div>
       </SheetContent>
     </Sheet>
   );
 }
-    
