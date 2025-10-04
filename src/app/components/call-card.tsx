@@ -219,7 +219,7 @@ export function CallGroupCard({
     return caller.phone;
   };
 
-  const lastCallTime = formatDistanceToNow(new Date(caller.last_call), { addSuffix: true });
+  const lastCallTime = formatDistanceToNow(new Date(caller.last_call), { addSuffix: true }).replace('about ', '');
   const notePreview = caller.note ? caller.note.split(' ').slice(0, 7).join(' ') + (caller.note.split(' ').length > 7 ? '...' : '') : '';
   const isPlayingInGroup = calls.some(c => c.id === currentlyPlaying);
 
@@ -340,6 +340,20 @@ export function CallGroupCard({
                     {caller.last_sync ? 'Undone' : 'Done'}
                   </Button>
                 </div>
+
+                {caller.note && (
+                    <div className="mt-4 rounded-md border bg-muted/50 p-3 text-sm">
+                        <p className="font-semibold">Lead Note</p>
+                        <p className="text-muted-foreground whitespace-pre-wrap">{caller.note}</p>
+                    </div>
+                )}
+                {caller.segment && (
+                    <div className="mt-2 rounded-md border bg-muted/50 p-3 text-sm">
+                        <p className="font-semibold">Segment</p>
+                        <p className="text-muted-foreground">{caller.segment}</p>
+                    </div>
+                )}
+
               </div>
             </div>
           </AccordionContent>
@@ -377,3 +391,5 @@ export function CallGroupCard({
     </Card>
   );
 }
+
+    

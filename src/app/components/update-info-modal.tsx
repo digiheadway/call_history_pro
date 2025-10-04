@@ -48,7 +48,7 @@ export default function UpdateInfoModal({ isOpen, onClose, caller, onUpdate }: U
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Update Info for {caller.phone}</DialogTitle>
           <DialogDescription>
@@ -56,25 +56,19 @@ export default function UpdateInfoModal({ isOpen, onClose, caller, onUpdate }: U
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              Name
-            </Label>
+          <div className="space-y-2">
+            <Label htmlFor="name">Name</Label>
             <Input
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="col-span-3"
               placeholder="Enter custom name"
             />
           </div>
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="type" className="text-right">
-              Type
-            </Label>
-            <div className="col-span-3">
+          <div className="space-y-2">
+            <Label htmlFor="type">Type</Label>
               <Select value={type} onValueChange={setType}>
-                <SelectTrigger>
+                <SelectTrigger id="type">
                   <SelectValue placeholder="Select a type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -85,18 +79,14 @@ export default function UpdateInfoModal({ isOpen, onClose, caller, onUpdate }: U
                   ))}
                 </SelectContent>
               </Select>
-            </div>
           </div>
           {type === 'Other' && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="custom-type" className="text-right">
-                Custom
-              </Label>
+            <div className="space-y-2">
+              <Label htmlFor="custom-type">Custom Type</Label>
               <Input
                 id="custom-type"
                 value={customType}
                 onChange={(e) => setCustomType(e.target.value)}
-                className="col-span-3"
                 placeholder="Enter custom type"
               />
             </div>
@@ -110,3 +100,5 @@ export default function UpdateInfoModal({ isOpen, onClose, caller, onUpdate }: U
     </Dialog>
   );
 }
+
+    
