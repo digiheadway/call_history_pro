@@ -89,7 +89,7 @@ const CallGroupList = ({
                 <div className="mt-2 space-y-2">
                   {groupInfo.groups.map(group => (
                     <CallGroupCard
-                      key={group.caller.id}
+                      key={`${tab}-${group.caller.id}`}
                       group={group}
                       onUpdateContactNote={onUpdateContactNote}
                       onUpdateCallNote={onUpdateCallNote}
@@ -325,14 +325,14 @@ export default function CallLog({
       </TabsContent>
       <TabsContent value="never-attended" className="flex-1 overflow-hidden">
          <CallGroupList 
-            groups={groupedNeverAttended} LAG
+            groups={groupedNeverAttended}
             sortedGroupTitles={sortedNeverAttendedTitles}
             tab="Never Attended"
             {...listProps}
         />
       </TabsContent>
       <TabsContent value="may-be-pending" className="flex-1 overflow-hidden">
-         <CallGroupList LAG
+         <CallGroupList 
             groups={groupedMayBePending}
             sortedGroupTitles={sortedMayBePendingTitles}
             tab="May be Pending"
