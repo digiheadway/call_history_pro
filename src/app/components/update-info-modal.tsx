@@ -22,6 +22,7 @@ const CALLER_TYPE_OPTIONS = [
   'Low Budget Lead',
   'Waste Lead',
   'Good Lead',
+  'Seller',
   'Other'
 ];
 
