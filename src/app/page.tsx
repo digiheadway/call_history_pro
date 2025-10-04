@@ -248,7 +248,9 @@ export default function Home() {
 
 
   const callGroups: CallGroup[] = useMemo(() => {
-    return filteredCallers
+    const uniqueCallers = Array.from(new Map(filteredCallers.map(caller => [caller.id, caller])).values());
+
+    return uniqueCallers
       .map((caller) => {
         const callsInGroup = callsByPhone[caller.phone] || [];
         
@@ -349,4 +351,3 @@ export default function Home() {
   );
 }
 
-    

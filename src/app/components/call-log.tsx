@@ -89,7 +89,7 @@ const CallGroupList = ({
                 <div className="mt-2 space-y-2">
                   {groupInfo.groups.map(group => (
                     <CallGroupCard
-                      key={`${tab}-${group.caller.id}`}
+                      key={group.caller.id}
                       group={group}
                       onUpdateContactNote={onUpdateContactNote}
                       onUpdateCallNote={onUpdateCallNote}
