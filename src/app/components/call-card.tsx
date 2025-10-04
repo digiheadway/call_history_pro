@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Call, Caller } from '@/lib/types';
+import type { Caller } from '@/lib/types';
 import { fetchCalls } from '@/lib/api';
 import type { CallGroup } from './call-log';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -19,6 +19,8 @@ import {
   Phone,
   MessageCircle,
   Copy,
+  Info,
+  CheckCircle2,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -29,12 +31,14 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AudioPlayer } from './audio-player';
+import LeadInfoSheet from './lead-info-sheet';
 
 interface CallGroupCardProps {
   group: CallGroup;
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (callerId: string) => void;
+  onMarkSynced: (callerId: string) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -94,7 +98,7 @@ function CallDetail({
 
   return (
     <Accordion type="single" collapsible className="w-full">
-      <AccordionItem value={call.id} className="border-0 overflow-hidden">
+      <AccordionItem value={call.id} className="border-0 overflow-hidden rounded-md">
         <AccordionTrigger className="flex w-full items-center justify-between text-xs p-2 hover:no-underline hover:bg-accent/50 rounded-md">
           <div className="flex items-center gap-2">
             {callTypeIcons[call.type]}
@@ -147,6 +151,7 @@ export function CallGroupCard({
     onUpdateContactNote, 
     onUpdateCallNote, 
     onExcludeNumber, 
+    onMarkSynced,
     setCallsByPhone, 
     isExpanded, 
     onToggleExpand,
@@ -157,6 +162,7 @@ export function CallGroupCard({
   const [contactNote, setContactNote] = useState(caller.note || '');
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
   const [isExcludeAlertOpen, setIsExcludeAlertOpen] = useState(false);
+  const [isLeadInfoOpen, setIsLeadInfoOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -181,6 +187,10 @@ export function CallGroupCard({
   const handleSaveContactNote = () => {
     onUpdateContactNote(caller.id, contactNote);
   };
+  
+  const handleMarkSynced = () => {
+      onMarkSynced(caller.id);
+  }
 
   const handleExclude = () => {
     onExcludeNumber(caller.id);
@@ -213,6 +223,7 @@ export function CallGroupCard({
               <div className="flex-1 space-y-1">
                 <div className="flex items-center gap-2">
                   {isPlayingInGroup && <Speaker className="h-4 w-4 text-primary animate-pulse" />}
+                  {caller.last_sync && <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />}
                   <p className="font-semibold text-foreground">{getCallerDisplay()}</p>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -237,8 +248,8 @@ export function CallGroupCard({
           </AccordionTrigger>
           <AccordionContent>
             <div className="space-y-4 pb-4">
-              <div className="px-2 pt-2">
-                <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-2">
+              <div className="px-4 pt-2">
+                <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border bg-background/50 p-1">
                   {isLoadingCalls ? (
                     <div className="flex justify-center items-center p-4">
                       <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -270,6 +281,12 @@ export function CallGroupCard({
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                       {caller.lead_id && (
+                        <DropdownMenuItem onClick={() => setIsLeadInfoOpen(true)}>
+                          <Info className="mr-2 h-4 w-4" />
+                          Show Lead Info
+                        </DropdownMenuItem>
+                       )}
                       <DropdownMenuItem asChild>
                         <a href={`tel:${caller.phone}`} className="flex items-center">
                           <Phone className="mr-2 h-4 w-4" />
@@ -302,8 +319,12 @@ export function CallGroupCard({
                   className="min-h-[80px]"
                 />
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button onClick={handleSaveContactNote} className="flex-grow">
+                  <Button onClick={handleSaveContactNote} className="flex-1">
                     Save Contact Note
+                  </Button>
+                  <Button onClick={handleMarkSynced} className="flex-1" variant="secondary" disabled={caller.last_sync}>
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    Done
                   </Button>
                 </div>
               </div>
@@ -327,8 +348,13 @@ export function CallGroupCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {caller.lead_id && (
+        <LeadInfoSheet 
+            leadId={caller.lead_id} 
+            isOpen={isLeadInfoOpen} 
+            onClose={() => setIsLeadInfoOpen(false)} 
+        />
+      )}
     </Card>
   );
 }
-
-    

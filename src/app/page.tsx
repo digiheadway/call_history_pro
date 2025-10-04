@@ -11,6 +11,7 @@ import {
   updateCallerNote,
   updateCallNote,
   updateExcludedStatus,
+  markSynced,
 } from '@/lib/api';
 import type { Caller, Call, DateRange, GroupedCalls } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -40,14 +41,11 @@ export default function Home() {
     setExpandedAccordions(prev => {
       const isAlreadyExpanded = prev.includes(id);
       if (isAlreadyExpanded) {
-        // If it's already open, close it.
         return prev.filter(item => item !== id);
       } else {
-        // If it's not open, add it.
         const newExpanded = [...prev, id];
-        // If we now have more than 2 open, remove the first one (the oldest).
         if (newExpanded.length > 2) {
-          return newExpanded.slice(1);
+          return newExpanded.slice(newExpanded.length - 2);
         }
         return newExpanded;
       }
@@ -91,7 +89,7 @@ export default function Home() {
       await updateCallerNote(callerId, newNote);
       setAllCallers((prevCallers) =>
         prevCallers.map((caller) =>
-          caller.id === callerId ? { ...caller, note: newNote } : caller
+          caller.id === callerId ? { ...caller, note: newNote, last_sync: false } : caller
         )
       );
       toast({
@@ -149,6 +147,28 @@ export default function Home() {
         title: 'Error',
         description: 'Could not exclude the contact.',
       });
+    }
+  };
+
+  const handleMarkSynced = async (callerId: string) => {
+    try {
+      await markSynced(callerId);
+      setAllCallers((prev) => 
+        prev.map((caller) =>
+            caller.id === callerId ? { ...caller, last_sync: true } : caller
+        )
+      );
+      toast({
+        title: 'Contact Synced',
+        description: 'Contact has been marked as done.',
+      });
+    } catch(error) {
+        console.error('Failed to mark as synced:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Could not mark the contact as synced.',
+        });
     }
   };
   
@@ -245,6 +265,7 @@ export default function Home() {
         onUpdateContactNote={handleUpdateContactNote}
         onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
+        onMarkSynced={handleMarkSynced}
         allCallers={allCallers}
         setCallsByPhone={setCallsByPhone}
         activeTab={activeTab}

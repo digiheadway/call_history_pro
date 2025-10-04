@@ -1,16 +1,17 @@
 
 // @ts-nocheck
-import type { Caller, Call } from './types';
+import type { Caller, Call, Lead } from './types';
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
+const API_V3_BASE_URL = 'https://prop.digiheadway.in/api/v3/';
 
-async function apiRequest<T>(action: string, params: Record<string, any>, method: 'GET' | 'POST' = 'GET'): Promise<T> {
+async function apiRequest<T>(baseURL: string, action: string, params: Record<string, any>, method: 'GET' | 'POST' = 'GET'): Promise<T> {
   let url: URL;
   const options: RequestInit = {
     method,
   };
 
   if (method === 'GET') {
-    url = new URL(API_BASE_URL);
+    url = new URL(baseURL);
     url.searchParams.append('action', action);
     for (const key in params) {
       if (params[key] !== undefined) {
@@ -18,7 +19,7 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
       }
     }
   } else { // POST
-    url = new URL(API_BASE_URL);
+    url = new URL(baseURL);
     url.searchParams.append('action', action);
     const formData = new FormData();
     for (const key in params) {
@@ -49,6 +50,7 @@ async function apiRequest<T>(action: string, params: Record<string, any>, method
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
             note: caller.note,
             excluded: caller.excluded === '1',
+            last_sync: caller.last_sync === '1',
             calls_in_range: parseInt(caller.calls, 10) || 0,
             lead_id: caller.lead_id,
             lead_name: caller.lead_name,
@@ -79,7 +81,7 @@ export function fetchCallers(params: {
   min_last_call_duration?: number;
   max_last_call_duration?: number;
 }): Promise<Caller[]> {
-  return apiRequest('fetch_callers', params);
+  return apiRequest(API_BASE_URL, 'fetch_callers', params);
 }
 
 export function fetchCalls(params: {
@@ -87,17 +89,25 @@ export function fetchCalls(params: {
   end_date?: string;   // YYYY-MM-DD
   phone: string;
 }): Promise<Call[]> {
-  return apiRequest('fetch_calls', params);
+  return apiRequest(API_BASE_URL, 'fetch_calls', params);
 }
 
 export function updateCallNote(id: string, note: string): Promise<any> {
-  return apiRequest('update_call_note', { id, note }, 'POST');
+  return apiRequest(API_BASE_URL, 'update_call_note', { id, note }, 'POST');
 }
 
 export function updateCallerNote(id: string, note: string): Promise<any> {
-  return apiRequest('update_caller_note', { caller_id: id, note }, 'POST');
+  return apiRequest(API_BASE_URL, 'update_caller_note', { caller_id: id, note }, 'POST');
 }
 
 export function updateExcludedStatus(caller_id: string, excluded: boolean): Promise<any> {
-  return apiRequest('update_excluded', { caller_id, excluded: excluded ? 1 : 0 }, 'POST');
+  return apiRequest(API_BASE_URL, 'update_excluded', { caller_id, excluded: excluded ? 1 : 0 }, 'POST');
+}
+
+export function markSynced(caller_id: string): Promise<any> {
+    return apiRequest(API_BASE_URL, 'mark_synced', { caller_id }, 'POST');
+}
+
+export function fetchLeadInfo(lead_id: string): Promise<Lead> {
+    return apiRequest(API_V3_BASE_URL, 'get_lead', { id: lead_id });
 }
