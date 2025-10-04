@@ -34,11 +34,11 @@ interface FilterPanelProps {
 }
 
 const getPresetFromRange = (range?: DateRange): string => {
-    if (!range || !range.from || !range.to) return 'range';
-
-    const today = startOfToday();
+    if (!range || !range.from) return 'range';
+    
     const from = startOfDay(range.from);
-    const to = endOfDay(range.to);
+    const to = range.to ? endOfDay(range.to) : from;
+    const today = startOfToday();
 
     if (isSameDay(from, today) && isSameDay(to, today)) return 'today';
     if (isSameDay(from, subDays(today, 1)) && isSameDay(to, subDays(today, 1))) return 'yesterday';
@@ -71,8 +71,9 @@ export default function FilterPanel({
   setSyncFilter
 }: FilterPanelProps) {
   const [date, setDate] = useState<DateRange | undefined>(initialRange);
-  const [preset, setPreset] = useState<string>(getPresetFromRange(initialRange));
-  const [calendarMode, setCalendarMode] = useState<'range' | 'single'>(preset === 'day' ? 'single' : 'range');
+  const [preset, setPreset] = useState<string>('range');
+  const [calendarMode, setCalendarMode] = useState<'range' | 'single'>('range');
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   
   useEffect(() => {
     setDate(initialRange);
@@ -85,48 +86,44 @@ export default function FilterPanel({
   const handlePresetChange = (value: string) => {
     setPreset(value);
     const today = startOfToday();
-    
     let newRange: DateRange | undefined;
     
     switch(value) {
       case 'today':
         newRange = { from: today, to: today };
-        setCalendarMode('range');
         break;
       case 'yesterday':
         const yesterday = subDays(today, 1);
         newRange = { from: yesterday, to: yesterday };
-        setCalendarMode('range');
         break;
       case '3':
         newRange = { from: subDays(today, 2), to: today };
-        setCalendarMode('range');
         break;
       case '7':
         newRange = { from: subDays(today, 6), to: today };
-        setCalendarMode('range');
         break;
       case '14':
         newRange = { from: subDays(today, 13), to: today };
-        setCalendarMode('range');
         break;
       case '30':
         newRange = { from: subDays(today, 29), to: today };
-        setCalendarMode('range');
         break;
       case 'day':
         setCalendarMode('single');
-        // Let the calendar handle setting the date
+        setDate(undefined); // Clear date to allow new single selection
+        setIsPopoverOpen(true);
         return; 
       case 'range':
         setCalendarMode('range');
-        // Let the calendar handle setting the date
+        setDate(undefined); // Clear date to allow new range selection
+        setIsPopoverOpen(true);
         return;
       default:
         newRange = undefined;
     }
+
     setDate(newRange);
-    if (newRange && newRange.from) {
+    if (newRange?.from) {
         onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to || newRange.from) });
     }
   }
@@ -136,10 +133,12 @@ export default function FilterPanel({
     if(newDate?.from) {
       const adjustedTo = newDate.to || newDate.from;
       onDateRangeChange({ from: startOfDay(newDate.from), to: endOfDay(adjustedTo) });
-    }
-    // Automatically switch preset if a date is picked manually
-    if (preset !== 'day' && preset !== 'range') {
-        setPreset(calendarMode === 'single' ? 'day' : 'range');
+      if (calendarMode === 'single' && newDate.from) {
+        setIsPopoverOpen(false);
+      }
+       if (calendarMode === 'range' && newDate.from && newDate.to) {
+        setIsPopoverOpen(false);
+      }
     }
   }
 
@@ -150,7 +149,7 @@ export default function FilterPanel({
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto">
-          <div className="mt-6 space-y-6">
+          <div className="space-y-6 p-4">
               <div>
                 <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
                 <div className="relative">
@@ -186,41 +185,39 @@ export default function FilterPanel({
                     </SelectContent>
                   </Select>
 
-                  {(preset === 'day' || preset === 'range') && (
-                      <Popover>
-                      <PopoverTrigger asChild>
-                          <Button
-                          id="date"
-                          variant={"outline"}
-                          className="justify-start text-left font-normal"
-                          >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {date?.from ? (
-                              date.to && !isSameDay(date.from, date.to) ? (
-                              <>
-                                  {format(date.from, "LLL dd, y")} -{" "}
-                                  {format(date.to, "LLL dd, y")}
-                              </>
-                              ) : (
-                              format(date.from, "LLL dd, y")
-                              )
+                  <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                  <PopoverTrigger asChild>
+                      <Button
+                      id="date"
+                      variant={"outline"}
+                      className="justify-start text-left font-normal"
+                      >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {date?.from ? (
+                          date.to && !isSameDay(date.from, date.to) ? (
+                          <>
+                              {format(date.from, "LLL dd, y")} -{" "}
+                              {format(date.to, "LLL dd, y")}
+                          </>
                           ) : (
-                              <span>Pick a date</span>
-                          )}
-                          </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                          initialFocus
-                          mode={calendarMode}
-                          defaultMonth={date?.from}
-                          selected={date}
-                          onSelect={handleDateChange}
-                          numberOfMonths={1}
-                          />
-                      </PopoverContent>
-                      </Popover>
-                  )}
+                          format(date.from, "LLL dd, y")
+                          )
+                      ) : (
+                          <span>Pick a date</span>
+                      )}
+                      </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                      initialFocus
+                      mode={calendarMode}
+                      defaultMonth={date?.from}
+                      selected={date}
+                      onSelect={handleDateChange}
+                      numberOfMonths={calendarMode === 'range' ? 2 : 1}
+                      />
+                  </PopoverContent>
+                  </Popover>
                 </div>
               </div>
 
@@ -299,7 +296,7 @@ export default function FilterPanel({
               </div>
           </div>
         </div>
-        <div className="mt-auto border-t pt-4">
+        <div className="border-t p-4">
              <Button onClick={onClose} className="w-full">Done</Button>
         </div>
       </SheetContent>
