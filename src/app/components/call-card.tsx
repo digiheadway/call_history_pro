@@ -344,9 +344,6 @@ export function CallGroupCard({
                 {caller.segment && (
                   <div className="mt-4 rounded-md border bg-muted/50 p-3 text-sm">
                     <p className="font-semibold">{caller.segment}</p>
-                    {caller.note && (
-                       <p className="text-muted-foreground whitespace-pre-wrap">{caller.note}</p>
-                    )}
                   </div>
                 )}
               </div>
@@ -386,3 +383,5 @@ export function CallGroupCard({
     </Card>
   );
 }
+
+    
