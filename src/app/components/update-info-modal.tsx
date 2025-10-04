@@ -34,9 +34,20 @@ export default function UpdateInfoModal({ isOpen, onClose, caller, onUpdate }: U
   useEffect(() => {
     if (isOpen) {
       setName(caller.custom_name || '');
-      const predefinedType = CALLER_TYPE_OPTIONS.includes(caller.caller_type || '');
-      setType(predefinedType ? caller.caller_type || '' : 'Other');
-      setCustomType(predefinedType ? '' : caller.caller_type || '');
+      
+      if (!caller.caller_type) {
+        setType('');
+        setCustomType('');
+      } else {
+        const predefinedType = CALLER_TYPE_OPTIONS.includes(caller.caller_type);
+        if (predefinedType) {
+          setType(caller.caller_type);
+          setCustomType('');
+        } else {
+          setType('Other');
+          setCustomType(caller.caller_type);
+        }
+      }
     }
   }, [isOpen, caller]);
 
