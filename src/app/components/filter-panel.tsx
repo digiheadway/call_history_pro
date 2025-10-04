@@ -4,13 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
-import { format, subDays, startOfToday, isSameDay, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { Search } from 'lucide-react';
+import { format, subDays, startOfToday, endOfDay, parseISO } from 'date-fns';
+import { Calendar as CalendarIcon, Search } from 'lucide-react';
 import type { LeadFilter, CustomNameFilter, TypeFilter, NoteFilter, SyncFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 interface FilterPanelProps {
   isOpen: boolean;
@@ -31,25 +34,6 @@ interface FilterPanelProps {
   setSyncFilter: (filter: SyncFilter) => void;
 }
 
-const getPresetFromRange = (range?: DateRange): string => {
-    if (!range || !range.from) return 'range';
-    
-    const from = startOfDay(range.from);
-    const to = range.to ? endOfDay(range.to) : from;
-    const today = startOfToday();
-
-    if (isSameDay(from, today) && isSameDay(to, today)) return 'today';
-    if (isSameDay(from, subDays(today, 1)) && isSameDay(to, subDays(today, 1))) return 'yesterday';
-    if (isSameDay(from, subDays(today, 2)) && isSameDay(to, today)) return '3';
-    if (isSameDay(from, subDays(today, 6)) && isSameDay(to, today)) return '7';
-    if (isSameDay(from, subDays(today, 13)) && isSameDay(to, today)) return '14';
-    if (isSameDay(from, subDays(today, 29)) && isSameDay(to, today)) return '30';
-    if (isSameDay(from, to)) return 'day';
-    
-    return 'range';
-}
-
-
 export default function FilterPanel({
   isOpen,
   onClose,
@@ -68,16 +52,10 @@ export default function FilterPanel({
   syncFilter,
   setSyncFilter
 }: FilterPanelProps) {
-  const [preset, setPreset] = useState<string>('range');
   
-  useEffect(() => {
-    const newPreset = getPresetFromRange(initialRange);
-    setPreset(newPreset);
-  }, [initialRange]);
-
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
   const handlePresetChange = (value: string) => {
-    setPreset(value);
     const today = startOfToday();
     let newRange: DateRange | undefined;
     
@@ -101,11 +79,8 @@ export default function FilterPanel({
       case '30':
         newRange = { from: subDays(today, 29), to: today };
         break;
-      case 'day':
-      case 'range':
-        // Let user pick dates, don't change range yet
-        // If there's an existing date, clear it so they start fresh
-        if (initialRange) onDateRangeChange(undefined);
+      case 'custom':
+        setIsDatePopoverOpen(true);
         return;
       default:
         newRange = undefined;
@@ -117,38 +92,23 @@ export default function FilterPanel({
         onDateRangeChange(undefined);
     }
   }
-
-  const handleSingleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = e.target.value ? parseISO(e.target.value) : undefined;
-    if (newDate) {
-      onDateRangeChange({ from: startOfDay(newDate), to: endOfDay(newDate) });
+  
+  const handleDateSelect = (range: DateRange | undefined) => {
+    if (range?.from) {
+      onDateRangeChange({ from: startOfDay(range.from), to: range.to ? endOfDay(range.to) : endOfDay(range.from) });
     } else {
-      onDateRangeChange(undefined);
+       onDateRangeChange(undefined);
+    }
+    // Close popover when a date/range is selected
+    if (range?.from && range.to) {
+      setIsDatePopoverOpen(false);
+    }
+     if (range?.from && !range.to) { // For single day selection
+      // Keep it open for range, but if it was a single click, you might want to close it.
+      // For this implementation, we will assume range selection and keep it open.
     }
   }
 
-  const handleRangeDateChange = (part: 'from' | 'to', value: string) => {
-    const newDate = value ? parseISO(value) : undefined;
-    const currentFrom = initialRange?.from;
-    const currentTo = initialRange?.to;
-    let newRange: DateRange | undefined;
-
-    if (part === 'from') {
-        newRange = { from: newDate, to: currentTo };
-    } else {
-        newRange = { from: currentFrom, to: newDate };
-    }
-    
-    if (newRange.from && newRange.to) {
-         onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to) });
-    } else {
-        onDateRangeChange(newRange);
-    }
-  }
-
-  const formatDateForInput = (date: Date | undefined) => {
-    return date ? format(date, 'yyyy-MM-dd') : '';
-  }
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -177,9 +137,9 @@ export default function FilterPanel({
               <div>
                 <h3 className="mb-2 text-sm font-medium text-foreground">Date Range</h3>
                 <div className="flex flex-col gap-2">
-                  <Select value={preset} onValueChange={handlePresetChange}>
+                  <Select onValueChange={handlePresetChange}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select range" />
+                      <SelectValue placeholder="Select range preset" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="today">Today</SelectItem>
@@ -188,36 +148,46 @@ export default function FilterPanel({
                       <SelectItem value="7">Last 7 days</SelectItem>
                       <SelectItem value="14">Last 14 days</SelectItem>
                       <SelectItem value="30">Last 30 days</SelectItem>
-                      <SelectItem value="day">Select Day</SelectItem>
-                      <SelectItem value="range">Select Date Range</SelectItem>
+                      <SelectItem value="custom">Custom Range...</SelectItem>
                     </SelectContent>
                   </Select>
 
-                  {preset === 'day' && (
-                    <Input
-                        type="date"
-                        value={formatDateForInput(initialRange?.from)}
-                        onChange={handleSingleDateChange}
-                    />
-                  )}
-
-                  {preset === 'range' && (
-                      <div className="flex items-center gap-2">
-                          <Input
-                              type="date"
-                              value={formatDateForInput(initialRange?.from)}
-                              onChange={(e) => handleRangeDateChange('from', e.target.value)}
-                              max={initialRange?.to ? formatDateForInput(initialRange.to) : undefined}
-                          />
-                          <span>to</span>
-                          <Input
-                              type="date"
-                              value={formatDateForInput(initialRange?.to)}
-                              onChange={(e) => handleRangeDateChange('to', e.target.value)}
-                              min={initialRange?.from ? formatDateForInput(initialRange.from) : undefined}
-                          />
-                      </div>
-                  )}
+                  <Popover open={isDatePopoverOpen} onOpenChange={setIsDatePopoverOpen}>
+                      <PopoverTrigger asChild>
+                          <Button
+                            id="date"
+                            variant={"outline"}
+                            className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !initialRange && "text-muted-foreground"
+                            )}
+                            >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {initialRange?.from ? (
+                                initialRange.to ? (
+                                <>
+                                    {format(initialRange.from, "LLL dd, y")} -{" "}
+                                    {format(initialRange.to, "LLL dd, y")}
+                                </>
+                                ) : (
+                                format(initialRange.from, "LLL dd, y")
+                                )
+                            ) : (
+                                <span>Pick a date</span>
+                            )}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                           <Calendar
+                            initialFocus
+                            mode="range"
+                            defaultMonth={initialRange?.from}
+                            selected={initialRange}
+                            onSelect={handleDateSelect}
+                            numberOfMonths={1}
+                           />
+                      </PopoverContent>
+                  </Popover>
 
                 </div>
               </div>
