@@ -38,7 +38,7 @@ interface CallGroupCardProps {
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (callerId: string) => void;
-  onMarkSynced: (callerId: string) => void;
+  onMarkSynced: (callerId: string, currentStatus: boolean) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   isExpanded: boolean;
   onToggleExpand: () => void;
@@ -189,7 +189,7 @@ export function CallGroupCard({
   };
   
   const handleMarkSynced = () => {
-      onMarkSynced(caller.id);
+      onMarkSynced(caller.id, caller.last_sync);
   }
 
   const handleExclude = () => {
@@ -322,9 +322,9 @@ export function CallGroupCard({
                   <Button onClick={handleSaveContactNote} className="flex-1">
                     Save Contact Note
                   </Button>
-                  <Button onClick={handleMarkSynced} className="flex-1" variant="secondary" disabled={caller.last_sync}>
+                  <Button onClick={handleMarkSynced} className="flex-1" variant={caller.last_sync ? "default" : "secondary"}>
                     <CheckCircle2 className="mr-2 h-4 w-4" />
-                    Done
+                    {caller.last_sync ? 'Undone' : 'Done'}
                   </Button>
                 </div>
               </div>

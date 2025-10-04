@@ -21,7 +21,7 @@ interface CallLogProps {
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (callerId: string) => void;
-  onMarkSynced: (callerId: string) => void;
+  onMarkSynced: (callerId: string, currentStatus: boolean) => void;
   allCallers: Caller[];
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   activeTab: string;
@@ -52,7 +52,7 @@ const CallGroupList = ({
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
   onExcludeNumber: (callerId: string) => void;
-  onMarkSynced: (callerId: string) => void;
+  onMarkSynced: (callerId: string, currentStatus: boolean) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
   tab: string;
   scrollAreaRef: React.RefObject<HTMLDivElement>;
@@ -152,8 +152,7 @@ export default function CallLog({
       return isMayBeMissed && !connectedIds.has(g.caller.id) && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id);
     });
   }, [allGroups, connectedIds, missedIds, rejectedIds]);
-  const mayBeMissedIds = useMemo(() => new Set(mayBeMissedGroups.map(g => g.caller.id)), [mayBeMissedGroups]);
-
+  
   const outgoingFailedGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isOutgoingFailed = g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration < 5;
@@ -166,30 +165,22 @@ export default function CallLog({
 
   const neverAttendedGroups = useMemo(() => {
     return allGroups.filter(g => {
-        // Condition 1: Never had a successful call.
-        if (phoneNumbersWithConnection.has(g.caller.phone)) {
-            return false;
-        }
-        // Condition 2: The last call must be an outgoing failure.
-        if (!outgoingFailedIds.has(g.caller.id)) {
-            return false;
-        }
-        // Condition 3: Must have more than one call attempt.
-        if (g.caller.calls_in_range < 2) {
-            return false;
-        }
-        // Exclude if it's already in another specific category
-        return !connectedIds.has(g.caller.id) && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !mayBeMissedIds.has(g.caller.id);
+      if (g.caller.calls_in_range < 2) return false;
+      if (phoneNumbersWithConnection.has(g.caller.phone)) return false;
+      if (!outgoingFailedIds.has(g.caller.id)) return false;
+      
+      const hasFailedIncoming = g.calls.some(c => c.type === 'incoming' && c.duration < 5) || missedIds.has(g.caller.id) || rejectedIds.has(g.caller.id);
+      return hasFailedIncoming;
     });
-  }, [allGroups, phoneNumbersWithConnection, outgoingFailedIds, connectedIds, missedIds, rejectedIds, mayBeMissedIds]);
-
+  }, [allGroups, phoneNumbersWithConnection, outgoingFailedIds, missedIds, rejectedIds]);
+  const neverAttendedIds = useMemo(() => new Set(neverAttendedGroups.map(g => g.caller.id)), [neverAttendedGroups]);
 
   const mayBePendingGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isMayBePending = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration >= 0 && g.caller.last_call_duration < 5;
-      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !mayBeMissedIds.has(g.caller.id);
+      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !neverAttendedIds.has(g.caller.id);
     });
-  }, [allGroups, missedIds, rejectedIds, connectedIds, mayBeMissedIds]);
+  }, [allGroups, missedIds, rejectedIds, connectedIds, neverAttendedIds]);
 
 
   const filterGroupsByTitle = (groups: CallGroup[]) => {

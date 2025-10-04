@@ -1,4 +1,3 @@
-
 // @ts-nocheck
 import type { Caller, Call, Lead } from './types';
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
@@ -104,8 +103,8 @@ export function updateExcludedStatus(caller_id: string, excluded: boolean): Prom
   return apiRequest(API_BASE_URL, 'update_excluded', { caller_id, excluded: excluded ? 1 : 0 }, 'POST');
 }
 
-export function markSynced(caller_id: string): Promise<any> {
-    return apiRequest(API_BASE_URL, 'mark_synced', { caller_id }, 'POST');
+export function markSynced(caller_id: string, current_status: boolean): Promise<any> {
+    return apiRequest(API_BASE_URL, 'mark_synced', { caller_id, status: current_status ? 1 : 0 }, 'POST');
 }
 
 export function fetchLeadInfo(lead_id: string): Promise<Lead> {

@@ -150,24 +150,25 @@ export default function Home() {
     }
   };
 
-  const handleMarkSynced = async (callerId: string) => {
+  const handleMarkSynced = async (callerId: string, currentStatus: boolean) => {
+    const newStatus = !currentStatus;
     try {
-      await markSynced(callerId);
+      await markSynced(callerId, currentStatus);
       setAllCallers((prev) => 
         prev.map((caller) =>
-            caller.id === callerId ? { ...caller, last_sync: true } : caller
+            caller.id === callerId ? { ...caller, last_sync: newStatus } : caller
         )
       );
       toast({
-        title: 'Contact Synced',
-        description: 'Contact has been marked as done.',
+        title: 'Contact Status Updated',
+        description: `Contact has been marked as ${newStatus ? 'done' : 'not done'}.`,
       });
     } catch(error) {
         console.error('Failed to mark as synced:', error);
         toast({
             variant: 'destructive',
             title: 'Error',
-            description: 'Could not mark the contact as synced.',
+            description: 'Could not update the contact sync status.',
         });
     }
   };
