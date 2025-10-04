@@ -211,57 +211,44 @@ export default function Home() {
   };
   
   const filteredCallers = useMemo(() => {
-    return allCallers.filter(caller => {
-      // Search Query Filter
-      if (searchQuery) {
-        const lowercasedQuery = searchQuery.toLowerCase();
-        const name = caller.lead_name || caller.custom_name || '';
-        const phone = caller.phone || '';
-        if (!name.toLowerCase().includes(lowercasedQuery) && !phone.includes(lowercasedQuery)) {
-          return false;
+    // Make a copy to avoid sorting the original allCallers state
+    return [...allCallers]
+      .sort((a, b) => new Date(b.last_call).getTime() - new Date(a.last_call).getTime())
+      .filter(caller => {
+        // Search Query Filter
+        if (searchQuery) {
+          const lowercasedQuery = searchQuery.toLowerCase();
+          const name = caller.lead_name || caller.custom_name || '';
+          const phone = caller.phone || '';
+          if (!name.toLowerCase().includes(lowercasedQuery) && !phone.includes(lowercasedQuery)) {
+            return false;
+          }
         }
-      }
 
-      // Lead Filter
-      if (leadFilter === 'lead' && !caller.lead_id) return false;
-      if (leadFilter === 'not-lead' && caller.lead_id) return false;
+        // Lead Filter
+        if (leadFilter === 'lead' && !caller.lead_id) return false;
+        if (leadFilter === 'not-lead' && caller.lead_id) return false;
 
-      // Custom Name Filter
-      if (customNameFilter === 'set' && (!caller.custom_name || caller.custom_name.trim() === '')) return false;
-      if (customNameFilter === 'not-set' && caller.custom_name && caller.custom_name.trim() !== '') return false;
+        // Custom Name Filter
+        if (customNameFilter === 'set' && (!caller.custom_name || caller.custom_name.trim() === '')) return false;
+        if (customNameFilter === 'not-set' && caller.custom_name && caller.custom_name.trim() !== '') return false;
 
-      // Type Filter
-      if (typeFilter === 'set' && (!caller.caller_type || caller.caller_type.trim() === '')) return false;
-      if (typeFilter === 'not-set' && caller.caller_type && caller.caller_type.trim() !== '') return false;
+        // Type Filter
+        if (typeFilter === 'set' && (!caller.caller_type || caller.caller_type.trim() === '')) return false;
+        if (typeFilter === 'not-set' && caller.caller_type && caller.caller_type.trim() !== '') return false;
 
-      // Note Filter
-      if (noteFilter === 'with-note' && (!caller.note || caller.note.trim() === '')) return false;
-      if (noteFilter === 'without-note' && caller.note && caller.note.trim() !== '') return false;
+        // Note Filter
+        if (noteFilter === 'with-note' && (!caller.note || caller.note.trim() === '')) return false;
+        if (noteFilter === 'without-note' && caller.note && caller.note.trim() !== '') return false;
 
-      // Sync Filter
-      if (syncFilter === 'done' && !caller.last_sync) return false;
-      if (syncFilter === 'undone' && caller.last_sync) return false;
+        // Sync Filter
+        if (syncFilter === 'done' && !caller.last_sync) return false;
+        if (syncFilter === 'undone' && caller.last_sync) return false;
 
-      return true;
+        return true;
     });
   }, [allCallers, searchQuery, leadFilter, customNameFilter, typeFilter, noteFilter, syncFilter]);
 
-
-  const callGroups: CallGroup[] = useMemo(() => {
-    const uniqueCallers = Array.from(new Map(filteredCallers.map(caller => [caller.id, caller])).values());
-
-    return uniqueCallers
-      .map((caller) => {
-        const callsInGroup = callsByPhone[caller.phone] || [];
-        
-        return {
-          caller: caller,
-          calls: callsInGroup,
-          lastCallTimestamp: new Date(caller.last_call),
-        };
-      })
-      .sort((a, b) => b.lastCallTimestamp.getTime() - a.lastCallTimestamp.getTime());
-  }, [filteredCallers, callsByPhone]);
 
   const getGroupTitle = useCallback((date: Date) => {
     const startOfDate = startOfDay(date);
@@ -270,7 +257,15 @@ export default function Home() {
     return format(startOfDate, 'MMMM d, yyyy');
   }, []);
   
-  const groupedAndSortedCalls = useMemo(() => {
+  const { groupedAndSortedCalls, sortedGroupTitles } = useMemo(() => {
+    const callGroups = Array.from(
+      new Map(filteredCallers.map(caller => [caller.id, caller])).values()
+    ).map((caller): CallGroup => ({
+      caller: caller,
+      calls: callsByPhone[caller.phone] || [],
+      lastCallTimestamp: new Date(caller.last_call),
+    }));
+
     const groupsByTitle = callGroups.reduce((acc, group) => {
       const title = getGroupTitle(group.lastCallTimestamp);
       if (!acc[title]) {
@@ -280,31 +275,29 @@ export default function Home() {
       return acc;
     }, {} as Record<string, CallGroup[]>);
 
-    const final: GroupedCalls = {};
+    const finalGroupedCalls: GroupedCalls = {};
     for (const title in groupsByTitle) {
         const groups = groupsByTitle[title];
         const callCount = groups.reduce((sum, g) => sum + g.caller.calls_in_range, 0);
         const callerCount = groups.length;
-        final[title] = {
+        finalGroupedCalls[title] = {
             groups: groups,
             callCount,
             callerCount
         };
     }
-    return final;
 
-  }, [callGroups, getGroupTitle]);
-
-  const sortedGroupTitles = useMemo(() => {
-    return Object.keys(groupedAndSortedCalls).sort((a, b) => {
+    const sortedTitles = Object.keys(finalGroupedCalls).sort((a, b) => {
       if (a === 'Today') return -1;
       if (b === 'Today') return 1;
       if (a === 'Yesterday') return -1;
       if (b === 'Yesterday') return 1;
       return new Date(b).getTime() - new Date(a).getTime();
     });
-  }, [groupedAndSortedCalls]);
 
+    return { groupedAndSortedCalls: finalGroupedCalls, sortedGroupTitles: sortedTitles };
+
+  }, [filteredCallers, callsByPhone, getGroupTitle]);
   
   return (
     <div className="flex h-full flex-col">
@@ -350,4 +343,3 @@ export default function Home() {
     </div>
   );
 }
-
