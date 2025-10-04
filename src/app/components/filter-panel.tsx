@@ -6,9 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
-import { format, subDays, startOfToday, startOfYesterday, isSameDay, startOfDay } from 'date-fns';
+import { format, subDays, startOfToday, startOfYesterday, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
-import type { DateRange as AppDateRange, ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
+import type { ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -17,8 +17,8 @@ import { Label } from "@/components/ui/label";
 interface FilterPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onDateRangeChange: (range: AppDateRange | undefined) => void;
-  initialRange?: AppDateRange;
+  onDateRangeChange: (range: DateRange | undefined) => void;
+  initialRange?: DateRange;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   contactFilter: ContactFilter;
@@ -29,7 +29,7 @@ interface FilterPanelProps {
   setNoteFilter: (filter: NoteFilter) => void;
 }
 
-const getPresetFromRange = (range?: AppDateRange): string => {
+const getPresetFromRange = (range?: DateRange): string => {
     if (!range || !range.from || !range.to) return 'range';
 
     const today = startOfToday();
@@ -76,7 +76,7 @@ export default function FilterPanel({
     setPreset(value);
     const to = new Date();
     
-    let newRange: AppDateRange | undefined;
+    let newRange: DateRange | undefined;
     
     switch(value) {
       case 'today':
@@ -228,6 +228,7 @@ export default function FilterPanel({
                     <SelectItem value="leads">Leads Only</SelectItem>
                     <SelectItem value="custom">Custom Only</SelectItem>
                     <SelectItem value="no-info">No Info Only</SelectItem>
+                    <SelectItem value="typed-predefined">Typed (Predefined)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

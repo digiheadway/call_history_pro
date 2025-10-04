@@ -2,10 +2,10 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { format, isToday, isYesterday, startOfDay, endOfDay } from 'date-fns';
+import { format, isToday, isYesterday, startOfDay, endOfDay, subDays } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
-import { Phone, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import {
   fetchCallers,
   updateCallerNote,
@@ -17,12 +17,24 @@ import {
 import type { Caller, Call, DateRange, GroupedCalls } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
-import { subDays } from 'date-fns';
 
-export type ContactFilter = 'all' | 'leads' | 'unsaved' | 'custom' | 'no-info';
+
+export type ContactFilter = 'all' | 'leads' | 'custom' | 'no-info' | 'typed-predefined';
 export type SyncFilter = 'all' | 'done' | 'undone';
 export type NoteFilter = 'all' | 'with-note' | 'without-note';
 
+const CALLER_TYPE_OPTIONS_FOR_FILTER = [
+  'Dealer',
+  'Builder Sales',
+  'Low Budget Lead',
+  'Waste Lead',
+  'Good Lead',
+  'Seller',
+  'Renting',
+  'Researching',
+  'Personal',
+  'Other'
+];
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -66,8 +78,8 @@ export default function Home() {
     setLoading(true);
     try {
       if (range && range.from) {
-        const startDate = format(range.from, 'yyyy-MM-dd');
-        const endDate = format(range.to, 'yyyy-MM-dd');
+        const startDate = format(startOfDay(range.from), 'yyyy-MM-dd');
+        const endDate = format(endOfDay(range.to), 'yyyy-MM-dd');
         const fetchedCallers = await fetchCallers({
           start_date: startDate,
           end_date: endDate,
@@ -223,9 +235,11 @@ export default function Home() {
     if (contactFilter === 'leads') {
         callers = callers.filter(caller => !!caller.lead_id);
     } else if (contactFilter === 'custom') {
-        callers = callers.filter(caller => !!caller.custom_name || !!caller.caller_type);
+        callers = callers.filter(caller => !!caller.custom_name && !CALLER_TYPE_OPTIONS_FOR_FILTER.includes(caller.caller_type || ''));
     } else if (contactFilter === 'no-info') {
         callers = callers.filter(caller => !caller.lead_id && !caller.custom_name && !caller.caller_type);
+    } else if (contactFilter === 'typed-predefined') {
+        callers = callers.filter(caller => caller.caller_type && CALLER_TYPE_OPTIONS_FOR_FILTER.includes(caller.caller_type));
     }
 
 

@@ -23,6 +23,9 @@ const CALLER_TYPE_OPTIONS = [
   'Waste Lead',
   'Good Lead',
   'Seller',
+  'Renting',
+  'Researching',
+  'Personal',
   'Other'
 ];
 
@@ -111,5 +114,4 @@ export default function UpdateInfoModal({ isOpen, onClose, caller, onUpdate }: U
     </Dialog>
   );
 }
-
     
