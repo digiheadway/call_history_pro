@@ -4,6 +4,8 @@ import { CallGroup } from "@/app/components/call-log";
 export interface Caller {
   id: string;
   phone: string;
+  custom_name: string | null;
+  caller_type: string | null;
   note: string | null;
   calls: number;
   calls_in_range: number;

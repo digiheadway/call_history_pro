@@ -20,6 +20,7 @@ interface CallLogProps {
   sortedGroupTitles: string[];
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
+  onUpdateCallerInfo: (callerId: string, info: { custom_name?: string; caller_type?: string }) => void;
   onExcludeNumber: (callerId: string) => void;
   onMarkSynced: (callerId: string, currentStatus: boolean) => void;
   allCallers: Caller[];
@@ -37,6 +38,7 @@ const CallGroupList = ({
   sortedGroupTitles,
   onUpdateContactNote,
   onUpdateCallNote,
+  onUpdateCallerInfo,
   onExcludeNumber,
   onMarkSynced,
   setCallsByPhone,
@@ -51,6 +53,7 @@ const CallGroupList = ({
   sortedGroupTitles: string[];
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
+  onUpdateCallerInfo: (callerId: string, info: { custom_name?: string; caller_type?: string }) => void;
   onExcludeNumber: (callerId: string) => void;
   onMarkSynced: (callerId: string, currentStatus: boolean) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
@@ -90,6 +93,7 @@ const CallGroupList = ({
                       group={group}
                       onUpdateContactNote={onUpdateContactNote}
                       onUpdateCallNote={onUpdateCallNote}
+                      onUpdateCallerInfo={onUpdateCallerInfo}
                       onExcludeNumber={onExcludeNumber}
                       onMarkSynced={onMarkSynced}
                       setCallsByPhone={setCallsByPhone}
@@ -121,6 +125,7 @@ export default function CallLog({
     sortedGroupTitles, 
     onUpdateContactNote, 
     onUpdateCallNote, 
+    onUpdateCallerInfo,
     onExcludeNumber, 
     onMarkSynced,
     allCallers,
@@ -137,22 +142,28 @@ export default function CallLog({
 
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
   
+  // Connected: duration >= 5s
   const connectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_duration >= 5), [allGroups]);
   const connectedIds = useMemo(() => new Set(connectedGroups.map(g => g.caller.id)), [connectedGroups]);
 
-  const missedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'missed'), [allGroups]);
+  // Missed: last_call=incoming, duration=0, type=missed
+  const missedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'missed' && g.caller.last_call_duration === 0), [allGroups]);
   const missedIds = useMemo(() => new Set(missedGroups.map(g => g.caller.id)), [missedGroups]);
 
+  // Rejected: last_call=incoming, type=rejected
   const rejectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'rejected'), [allGroups]);
   const rejectedIds = useMemo(() => new Set(rejectedGroups.map(g => g.caller.id)), [rejectedGroups]);
 
+  // May Be Missed: last_call=incoming, 0 < duration < 5
   const mayBeMissedGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isMayBeMissed = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration > 0 && g.caller.last_call_duration < 5;
       return isMayBeMissed && !connectedIds.has(g.caller.id) && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id);
     });
   }, [allGroups, connectedIds, missedIds, rejectedIds]);
-  
+  const mayBeMissedIds = useMemo(() => new Set(mayBeMissedGroups.map(g => g.caller.id)), [mayBeMissedGroups]);
+
+  // Outgoing Failed: last_call=outgoing, duration < 5
   const outgoingFailedGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isOutgoingFailed = g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration < 5;
@@ -161,26 +172,28 @@ export default function CallLog({
   }, [allGroups, connectedIds]);
   const outgoingFailedIds = useMemo(() => new Set(outgoingFailedGroups.map(g => g.caller.id)), [outgoingFailedGroups]);
 
-  const phoneNumbersWithConnection = useMemo(() => new Set(allCallers.filter(c => c.last_call_duration >= 5).map(c => c.phone)), [allCallers]);
-
+  const phoneNumbersWithConnection = useMemo(() => {
+    // This looks at all callers ever, not just in the current date range
+    return new Set(allCallers.filter(c => c.last_call_duration >= 5).map(c => c.phone));
+  }, [allCallers]);
+  
+  // Never Attended: calls_in_range >= 2, last call is Outgoing Failed, and no connected call EVER for this phone number
   const neverAttendedGroups = useMemo(() => {
     return allGroups.filter(g => {
       if (g.caller.calls_in_range < 2) return false;
       if (phoneNumbersWithConnection.has(g.caller.phone)) return false;
-      if (!outgoingFailedIds.has(g.caller.id)) return false;
-      
-      const hasFailedIncoming = g.calls.some(c => c.type === 'incoming' && c.duration < 5) || missedIds.has(g.caller.id) || rejectedIds.has(g.caller.id);
-      return hasFailedIncoming;
+      return outgoingFailedIds.has(g.caller.id);
     });
-  }, [allGroups, phoneNumbersWithConnection, outgoingFailedIds, missedIds, rejectedIds]);
+  }, [allGroups, phoneNumbersWithConnection, outgoingFailedIds]);
   const neverAttendedIds = useMemo(() => new Set(neverAttendedGroups.map(g => g.caller.id)), [neverAttendedGroups]);
 
+  // May Be Pending: last_call=incoming, duration 0-4s, and not in other specific categories
   const mayBePendingGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isMayBePending = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration >= 0 && g.caller.last_call_duration < 5;
-      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !neverAttendedIds.has(g.caller.id);
+      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !neverAttendedIds.has(g.caller.id) && !mayBeMissedIds.has(g.caller.id);
     });
-  }, [allGroups, missedIds, rejectedIds, connectedIds, neverAttendedIds]);
+  }, [allGroups, missedIds, rejectedIds, connectedIds, neverAttendedIds, mayBeMissedIds]);
 
 
   const filterGroupsByTitle = (groups: CallGroup[]) => {
@@ -244,7 +257,7 @@ export default function CallLog({
   const sortedMayBePendingTitles = useMemo(() => getSortedTitlesForGroups(mayBePendingGroups), [mayBePendingGroups, sortedGroupTitles, groupedCalls]);
 
 
-  const listProps = { onUpdateContactNote, onUpdateCallNote, onExcludeNumber, onMarkSynced, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion, currentlyPlaying, setCurrentlyPlaying };
+  const listProps = { onUpdateContactNote, onUpdateCallNote, onUpdateCallerInfo, onExcludeNumber, onMarkSynced, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion, currentlyPlaying, setCurrentlyPlaying };
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
@@ -312,14 +325,14 @@ export default function CallLog({
       </TabsContent>
       <TabsContent value="never-attended" className="flex-1 overflow-hidden">
          <CallGroupList 
-            groups={groupedNeverAttended} 
+            groups={groupedNeverAttended} LAG
             sortedGroupTitles={sortedNeverAttendedTitles}
             tab="Never Attended"
             {...listProps}
         />
       </TabsContent>
       <TabsContent value="may-be-pending" className="flex-1 overflow-hidden">
-         <CallGroupList 
+         <CallGroupList LAG
             groups={groupedMayBePending}
             sortedGroupTitles={sortedMayBePendingTitles}
             tab="May be Pending"

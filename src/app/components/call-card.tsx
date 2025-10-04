@@ -21,6 +21,7 @@ import {
   Copy,
   Info,
   CheckCircle2,
+  Edit,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -32,11 +33,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AudioPlayer } from './audio-player';
 import LeadInfoSheet from './lead-info-sheet';
+import UpdateInfoModal from './update-info-modal';
 
 interface CallGroupCardProps {
   group: CallGroup;
   onUpdateContactNote: (callerId: string, newNote: string) => void;
   onUpdateCallNote: (callId: string, newNote: string) => void;
+  onUpdateCallerInfo: (callerId: string, info: { custom_name?: string; caller_type?: string }) => void;
   onExcludeNumber: (callerId: string) => void;
   onMarkSynced: (callerId: string, currentStatus: boolean) => void;
   setCallsByPhone: React.Dispatch<React.SetStateAction<Record<string, Call[]>>>;
@@ -150,6 +153,7 @@ export function CallGroupCard({
     group, 
     onUpdateContactNote, 
     onUpdateCallNote, 
+    onUpdateCallerInfo,
     onExcludeNumber, 
     onMarkSynced,
     setCallsByPhone, 
@@ -163,6 +167,7 @@ export function CallGroupCard({
   const [isLoadingCalls, setIsLoadingCalls] = useState(false);
   const [isExcludeAlertOpen, setIsExcludeAlertOpen] = useState(false);
   const [isLeadInfoOpen, setIsLeadInfoOpen] = useState(false);
+  const [isUpdateInfoOpen, setIsUpdateInfoOpen] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -204,8 +209,12 @@ export function CallGroupCard({
   
   const getCallerDisplay = () => {
     if (caller.lead_name) {
-      const budget = caller.budget ? ` - ${caller.budget}` : '';
-      return `${caller.lead_id || ''}. ${caller.lead_name}${budget}`;
+        const budget = caller.budget ? ` - ${caller.budget}` : '';
+        return `${caller.lead_id || ''}. ${caller.lead_name}${budget}`;
+    }
+    if (caller.custom_name) {
+        const type = caller.caller_type ? ` (${caller.caller_type})` : '';
+        return `${caller.custom_name}${type}`;
     }
     return caller.phone;
   };
@@ -287,6 +296,10 @@ export function CallGroupCard({
                           Show Lead Info
                         </DropdownMenuItem>
                        )}
+                       <DropdownMenuItem onClick={() => setIsUpdateInfoOpen(true)}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          Update Info
+                        </DropdownMenuItem>
                       <DropdownMenuItem asChild>
                         <a href={`tel:${caller.phone}`} className="flex items-center">
                           <Phone className="mr-2 h-4 w-4" />
@@ -355,6 +368,12 @@ export function CallGroupCard({
             onClose={() => setIsLeadInfoOpen(false)} 
         />
       )}
+      <UpdateInfoModal
+        isOpen={isUpdateInfoOpen}
+        onClose={() => setIsUpdateInfoOpen(false)}
+        caller={caller}
+        onUpdate={onUpdateCallerInfo}
+      />
     </Card>
   );
 }

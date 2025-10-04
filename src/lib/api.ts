@@ -1,3 +1,4 @@
+
 // @ts-nocheck
 import type { Caller, Call, Lead } from './types';
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
@@ -33,7 +34,16 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
     const response = await fetch(url.toString(), options);
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      // Try to parse as JSON to see if there is a structured error.
+      try {
+        const errorJson = JSON.parse(errorText);
+        if (errorJson.message) {
+            throw new Error(`API request failed with status ${response.status}: ${errorJson.message}`);
+        }
+      } catch(e) {
+        // Not a JSON error, throw the raw text
+        throw new Error(`API request failed with status ${response.status}: ${errorText}`);
+      }
     }
     const data = await response.json();
     if (data.status === 'error') {
@@ -44,6 +54,8 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
         return data.data.map((caller: any) => ({
             id: caller.caller_id,
             phone: caller.caller_phone,
+            custom_name: caller.custom_name,
+            caller_type: caller.caller_type,
             last_call: caller.last_call,
             last_call_type: caller.last_call_type,
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
@@ -105,6 +117,10 @@ export function updateExcludedStatus(caller_id: string, excluded: boolean): Prom
 
 export function markSynced(caller_id: string, current_status: boolean): Promise<any> {
     return apiRequest(API_BASE_URL, 'mark_synced', { caller_id, status: current_status ? 1 : 0 }, 'POST');
+}
+
+export function updateCallerInfo(caller_id: string, info: { custom_name?: string; caller_type?: string }): Promise<any> {
+    return apiRequest(API_BASE_URL, 'update_caller_info', { caller_id, ...info }, 'POST');
 }
 
 export function fetchLeadInfo(lead_id: string): Promise<Lead> {

@@ -5,13 +5,14 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { format, isToday, isYesterday, startOfDay } from 'date-fns';
 import Header from '@/app/components/header';
 import CallLog, { type CallGroup } from '@/app/components/call-log';
-import { Phone, Speaker } from 'lucide-react';
+import { Phone } from 'lucide-react';
 import {
   fetchCallers,
   updateCallerNote,
   updateCallNote,
   updateExcludedStatus,
   markSynced,
+  updateCallerInfo,
 } from '@/lib/api';
 import type { Caller, Call, DateRange, GroupedCalls } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -172,6 +173,28 @@ export default function Home() {
         });
     }
   };
+
+  const handleUpdateCallerInfo = async (callerId: string, info: { custom_name?: string; caller_type?: string }) => {
+    try {
+      await updateCallerInfo(callerId, info);
+      setAllCallers((prevCallers) =>
+        prevCallers.map((caller) =>
+          caller.id === callerId ? { ...caller, ...info, last_sync: false } : caller
+        )
+      );
+      toast({
+        title: 'Info Updated',
+        description: 'The contact information has been saved.',
+      });
+    } catch (error) {
+      console.error('Failed to update caller info:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not save the contact information.',
+      });
+    }
+  };
   
   const filteredCallers = useMemo(() => {
     if (!searchQuery) {
@@ -179,7 +202,7 @@ export default function Home() {
     }
     const lowercasedQuery = searchQuery.toLowerCase();
     return allCallers.filter(caller => {
-      const name = caller.lead_name || '';
+      const name = caller.lead_name || caller.custom_name || '';
       const phone = caller.phone || '';
       return name.toLowerCase().includes(lowercasedQuery) || phone.includes(lowercasedQuery);
     });
@@ -267,6 +290,7 @@ export default function Home() {
         onUpdateCallNote={handleUpdateCallNote}
         onExcludeNumber={handleExcludeNumber}
         onMarkSynced={handleMarkSynced}
+        onUpdateCallerInfo={handleUpdateCallerInfo}
         allCallers={allCallers}
         setCallsByPhone={setCallsByPhone}
         activeTab={activeTab}
