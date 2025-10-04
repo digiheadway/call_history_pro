@@ -149,7 +149,7 @@ export default function FilterPanel({
         <SheetHeader>
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
-        <div className="flex-1 mt-6 space-y-6 overflow-y-auto">
+        <div className="mt-6 space-y-6 pb-16">
             <div>
               <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
               <div className="relative">
@@ -164,123 +164,123 @@ export default function FilterPanel({
               </div>
             </div>
 
-            <Separator />
-            
-            <div>
-              <h3 className="mb-2 text-sm font-medium text-foreground">Date Range</h3>
-              <div className="flex flex-col gap-2">
-                <Select value={preset} onValueChange={handlePresetChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="today">Today</SelectItem>
-                    <SelectItem value="yesterday">Yesterday</SelectItem>
-                    <SelectItem value="3">Last 3 days</SelectItem>
-                    <SelectItem value="7">Last 7 days</SelectItem>
-                    <SelectItem value="14">Last 14 days</SelectItem>
-                    <SelectItem value="30">Last 30 days</SelectItem>
-                    <SelectItem value="day">Select Day</SelectItem>
-                    <SelectItem value="range">Select Date Range</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                {(preset === 'day' || preset === 'range') && (
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button
-                        id="date"
-                        variant={"outline"}
-                        className="justify-start text-left font-normal"
-                        >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date?.from ? (
-                            date.to && !isSameDay(date.from, date.to) ? (
-                            <>
-                                {format(date.from, "LLL dd, y")} -{" "}
-                                {format(date.to, "LLL dd, y")}
-                            </>
-                            ) : (
-                            format(date.from, "LLL dd, y")
-                            )
-                        ) : (
-                            <span>Pick a date</span>
-                        )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                        initialFocus
-                        mode={calendarMode}
-                        defaultMonth={date?.from}
-                        selected={date}
-                        onSelect={handleDateChange}
-                        numberOfMonths={1}
-                        />
-                    </PopoverContent>
-                    </Popover>
-                )}
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
+              <Separator />
+              
               <div>
-                <Label className="text-sm font-medium text-foreground">Lead Status</Label>
-                 <Select value={leadFilter} onValueChange={value => setLeadFilter(value as LeadFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by lead status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="lead">Leads Only</SelectItem>
-                    <SelectItem value="not-lead">Not Leads</SelectItem>
-                  </SelectContent>
-                </Select>
+                <h3 className="mb-2 text-sm font-medium text-foreground">Date Range</h3>
+                <div className="flex flex-col gap-2">
+                  <Select value={preset} onValueChange={handlePresetChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="today">Today</SelectItem>
+                      <SelectItem value="yesterday">Yesterday</SelectItem>
+                      <SelectItem value="3">Last 3 days</SelectItem>
+                      <SelectItem value="7">Last 7 days</SelectItem>
+                      <SelectItem value="14">Last 14 days</SelectItem>
+                      <SelectItem value="30">Last 30 days</SelectItem>
+                      <SelectItem value="day">Select Day</SelectItem>
+                      <SelectItem value="range">Select Date Range</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {(preset === 'day' || preset === 'range') && (
+                      <Popover>
+                      <PopoverTrigger asChild>
+                          <Button
+                          id="date"
+                          variant={"outline"}
+                          className="justify-start text-left font-normal"
+                          >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {date?.from ? (
+                              date.to && !isSameDay(date.from, date.to) ? (
+                              <>
+                                  {format(date.from, "LLL dd, y")} -{" "}
+                                  {format(date.to, "LLL dd, y")}
+                              </>
+                              ) : (
+                              format(date.from, "LLL dd, y")
+                              )
+                          ) : (
+                              <span>Pick a date</span>
+                          )}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                          initialFocus
+                          mode={calendarMode}
+                          defaultMonth={date?.from}
+                          selected={date}
+                          onSelect={handleDateChange}
+                          numberOfMonths={1}
+                          />
+                      </PopoverContent>
+                      </Popover>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <Label className="text-sm font-medium text-foreground">Custom Name</Label>
-                 <Select value={customNameFilter} onValueChange={value => setCustomNameFilter(value as CustomNameFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by custom name" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="set">Name Set</SelectItem>
-                    <SelectItem value="not-set">Name Not Set</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <Separator />
 
-               <div>
-                <Label className="text-sm font-medium text-foreground">Contact Type</Label>
-                 <Select value={typeFilter} onValueChange={value => setTypeFilter(value as TypeFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by contact type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="set">Type Set</SelectItem>
-                    <SelectItem value="not-set">Type Not Set</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <div className="space-y-4">
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Lead Status</Label>
+                   <Select value={leadFilter} onValueChange={value => setLeadFilter(value as LeadFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by lead status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="lead">Leads Only</SelectItem>
+                      <SelectItem value="not-lead">Not Leads</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-              <div>
-                <Label className="text-sm font-medium text-foreground">Person Note</Label>
-                 <Select value={noteFilter} onValueChange={value => setNoteFilter(value as NoteFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by note status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="with-note">With Note</SelectItem>
-                    <SelectItem value="without-note">Without Note</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Custom Name</Label>
+                   <Select value={customNameFilter} onValueChange={value => setCustomNameFilter(value as CustomNameFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by custom name" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="set">Name Set</SelectItem>
+                      <SelectItem value="not-set">Name Not Set</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                 <div>
+                  <Label className="text-sm font-medium text-foreground">Contact Type</Label>
+                   <Select value={typeFilter} onValueChange={value => setTypeFilter(value as TypeFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by contact type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="set">Type Set</SelectItem>
+                      <SelectItem value="not-set">Type Not Set</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Person Note</Label>
+                   <Select value={noteFilter} onValueChange={value => setNoteFilter(value as NoteFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by note status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="with-note">With Note</SelectItem>
+                      <SelectItem value="without-note">Without Note</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
 
                <div>
                 <Label className="text-sm font-medium text-foreground">Sync Status</Label>
@@ -297,7 +297,7 @@ export default function FilterPanel({
               </div>
             </div>
         </div>
-        <div className="border-t p-4">
+        <div className="absolute bottom-4 right-4 left-4">
              <Button onClick={onClose} className="w-full">Done</Button>
         </div>
       </SheetContent>
