@@ -75,18 +75,18 @@ export default function FilterPanel({
   const handlePresetChange = (value: string) => {
     setPreset(value);
     const to = new Date();
-    to.setHours(23, 59, 59, 999); // Ensure 'to' date includes the full day
     
     let newRange: AppDateRange | undefined;
     
     switch(value) {
       case 'today':
-        newRange = { from: startOfToday(), to };
+        const today = startOfToday();
+        newRange = { from: today, to: today };
         setCalendarMode('range');
         break;
       case 'yesterday':
         const yesterday = startOfYesterday();
-        newRange = { from: yesterday, to: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999) };
+        newRange = { from: yesterday, to: yesterday };
         setCalendarMode('range');
         break;
       case '3':
@@ -126,8 +126,6 @@ export default function FilterPanel({
     setDate(newDate);
     if(newDate?.from) {
       const adjustedTo = newDate.to || newDate.from;
-      // Set time to end of day
-      adjustedTo.setHours(23, 59, 59, 999);
       onDateRangeChange({ from: newDate.from, to: adjustedTo });
     }
     // Automatically switch preset if a date is picked manually
@@ -268,5 +266,3 @@ export default function FilterPanel({
     </Sheet>
   );
 }
-
-    
