@@ -163,7 +163,7 @@ export default function Home() {
   const handleMarkSynced = async (callerId: string, currentStatus: boolean) => {
     const newStatus = !currentStatus;
     try {
-      await markSynced(callerId, currentStatus);
+      await markSynced(callerId, newStatus);
       setAllCallers((prev) => 
         prev.map((caller) =>
             caller.id === callerId ? { ...caller, last_sync: newStatus } : caller
