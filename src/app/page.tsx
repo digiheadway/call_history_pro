@@ -19,22 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 
 
-export type ContactFilter = 'all' | 'leads' | 'custom' | 'no-info' | 'typed-predefined';
+export type ContactFilter = 'all' | 'typed' | 'not-typed';
 export type SyncFilter = 'all' | 'done' | 'undone';
 export type NoteFilter = 'all' | 'with-note' | 'without-note';
-
-const CALLER_TYPE_OPTIONS_FOR_FILTER = [
-  'Dealer',
-  'Builder Sales',
-  'Low Budget Lead',
-  'Waste Lead',
-  'Good Lead',
-  'Seller',
-  'Renting',
-  'Researching',
-  'Personal',
-  'Other'
-];
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -232,16 +219,11 @@ export default function Home() {
     }
     
     // Contact Filter
-    if (contactFilter === 'leads') {
-        callers = callers.filter(caller => !!caller.lead_id);
-    } else if (contactFilter === 'custom') {
-        callers = callers.filter(caller => !!caller.custom_name && !CALLER_TYPE_OPTIONS_FOR_FILTER.includes(caller.caller_type || ''));
-    } else if (contactFilter === 'no-info') {
-        callers = callers.filter(caller => !caller.lead_id && !caller.custom_name && !caller.caller_type);
-    } else if (contactFilter === 'typed-predefined') {
-        callers = callers.filter(caller => caller.caller_type && CALLER_TYPE_OPTIONS_FOR_FILTER.includes(caller.caller_type));
+    if (contactFilter === 'typed') {
+        callers = callers.filter(caller => caller.caller_type && caller.caller_type.trim() !== '');
+    } else if (contactFilter === 'not-typed') {
+        callers = callers.filter(caller => !caller.caller_type || caller.caller_type.trim() === '');
     }
-
 
     // Sync Filter
     if (syncFilter === 'done') {
@@ -358,3 +340,5 @@ export default function Home() {
     </div>
   );
 }
+
+    

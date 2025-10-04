@@ -68,19 +68,20 @@ export default function FilterPanel({
   
   useEffect(() => {
     setDate(initialRange);
-    setPreset(getPresetFromRange(initialRange));
+    const newPreset = getPresetFromRange(initialRange);
+    setPreset(newPreset);
+    setCalendarMode(newPreset === 'day' ? 'single' : 'range');
   }, [initialRange]);
 
 
   const handlePresetChange = (value: string) => {
     setPreset(value);
-    const to = new Date();
+    const today = startOfToday();
     
     let newRange: DateRange | undefined;
     
     switch(value) {
       case 'today':
-        const today = startOfToday();
         newRange = { from: today, to: today };
         setCalendarMode('range');
         break;
@@ -90,19 +91,19 @@ export default function FilterPanel({
         setCalendarMode('range');
         break;
       case '3':
-        newRange = { from: subDays(to, 2), to };
+        newRange = { from: subDays(today, 2), to: today };
         setCalendarMode('range');
         break;
       case '7':
-        newRange = { from: subDays(to, 6), to };
+        newRange = { from: subDays(today, 6), to: today };
         setCalendarMode('range');
         break;
       case '14':
-        newRange = { from: subDays(to, 13), to };
+        newRange = { from: subDays(today, 13), to: today };
         setCalendarMode('range');
         break;
       case '30':
-        newRange = { from: subDays(to, 29), to };
+        newRange = { from: subDays(today, 29), to: today };
         setCalendarMode('range');
         break;
       case 'day':
@@ -118,7 +119,7 @@ export default function FilterPanel({
     }
     setDate(newRange);
     if (newRange) {
-        onDateRangeChange(newRange);
+        onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to || newRange.from) });
     }
   }
 
@@ -126,7 +127,7 @@ export default function FilterPanel({
     setDate(newDate);
     if(newDate?.from) {
       const adjustedTo = newDate.to || newDate.from;
-      onDateRangeChange({ from: newDate.from, to: adjustedTo });
+      onDateRangeChange({ from: startOfDay(newDate.from), to: endOfDay(adjustedTo) });
     }
     // Automatically switch preset if a date is picked manually
     if (preset !== 'day' && preset !== 'range') {
@@ -225,10 +226,8 @@ export default function FilterPanel({
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Contacts</SelectItem>
-                    <SelectItem value="leads">Leads Only</SelectItem>
-                    <SelectItem value="custom">Custom Only</SelectItem>
-                    <SelectItem value="no-info">No Info Only</SelectItem>
-                    <SelectItem value="typed-predefined">Typed (Predefined)</SelectItem>
+                    <SelectItem value="typed">Type Defined</SelectItem>
+                    <SelectItem value="not-typed">Type Empty</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -267,3 +266,5 @@ export default function FilterPanel({
     </Sheet>
   );
 }
+
+    
