@@ -4,7 +4,9 @@ import { Phone, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import type { DateRange as AppDateRange, LeadFilter, CustomNameFilter, TypeFilter, NoteFilter, SyncFilter } from '@/app/page';
-import FilterPanel from './filter-panel';
+import dynamic from 'next/dynamic';
+
+const FilterPanel = dynamic(() => import('./filter-panel'));
 
 interface HeaderProps {
     onDateRangeChange: (range: AppDateRange | undefined) => void;
@@ -55,24 +57,26 @@ export default function Header({
             <span className="sr-only">Open filters</span>
           </Button>
       </header>
-      <FilterPanel
-        isOpen={isPanelOpen}
-        onClose={() => setIsPanelOpen(false)}
-        onDateRangeChange={onDateRangeChange}
-        initialRange={initialRange}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        leadFilter={leadFilter}
-        setLeadFilter={setLeadFilter}
-        customNameFilter={customNameFilter}
-        setCustomNameFilter={setCustomNameFilter}
-        typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
-        noteFilter={noteFilter}
-        setNoteFilter={setNoteFilter}
-        syncFilter={syncFilter}
-        setSyncFilter={setSyncFilter}
-      />
+      {isPanelOpen && (
+          <FilterPanel
+            isOpen={isPanelOpen}
+            onClose={() => setIsPanelOpen(false)}
+            onDateRangeChange={onDateRangeChange}
+            initialRange={initialRange}
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            leadFilter={leadFilter}
+            setLeadFilter={setLeadFilter}
+            customNameFilter={customNameFilter}
+            setCustomNameFilter={setCustomNameFilter}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            noteFilter={noteFilter}
+            setNoteFilter={setNoteFilter}
+            syncFilter={syncFilter}
+            setSyncFilter={setSyncFilter}
+          />
+      )}
     </>
   );
 }

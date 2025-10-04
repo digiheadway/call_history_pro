@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Caller } from '@/lib/types';
 import { fetchCalls } from '@/lib/api';
 import type { Call, CallGroup } from './call-log';
@@ -32,8 +32,10 @@ import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { AudioPlayer } from './audio-player';
-import LeadInfoSheet from './lead-info-sheet';
-import UpdateInfoModal from './update-info-modal';
+import dynamic from 'next/dynamic';
+
+const LeadInfoSheet = dynamic(() => import('./lead-info-sheet'));
+const UpdateInfoModal = dynamic(() => import('./update-info-modal'));
 
 interface CallGroupCardProps {
   group: CallGroup;
@@ -149,7 +151,7 @@ function CallDetail({
   );
 }
 
-export function CallGroupCard({ 
+function CallGroupCardComponent({ 
     group, 
     onUpdateContactNote, 
     onUpdateCallNote, 
@@ -367,21 +369,24 @@ export function CallGroupCard({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      {caller.lead_id && (
+      {isLeadInfoOpen && caller.lead_id && (
         <LeadInfoSheet 
             leadId={caller.lead_id} 
             isOpen={isLeadInfoOpen} 
             onClose={() => setIsLeadInfoOpen(false)} 
         />
       )}
-      <UpdateInfoModal
-        isOpen={isUpdateInfoOpen}
-        onClose={() => setIsUpdateInfoOpen(false)}
-        caller={caller}
-        onUpdate={onUpdateCallerInfo}
-      />
+       {isUpdateInfoOpen && (
+          <UpdateInfoModal
+            isOpen={isUpdateInfoOpen}
+            onClose={() => setIsUpdateInfoOpen(false)}
+            caller={caller}
+            onUpdate={onUpdateCallerInfo}
+          />
+       )}
     </Card>
   );
 }
 
+export const CallGroupCard = React.memo(CallGroupCardComponent);
     

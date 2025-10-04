@@ -2,9 +2,9 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { format, isToday, isYesterday, startOfDay, endOfDay, subDays } from 'date-fns';
 import Header from '@/app/components/header';
-import CallLog, { type CallGroup } from '@/app/components/call-log';
 import { Loader2 } from 'lucide-react';
 import {
   fetchCallers,
@@ -14,9 +14,14 @@ import {
   markSynced,
   updateCallerInfo,
 } from '@/lib/api';
-import type { Caller, Call, DateRange, GroupedCalls } from '@/lib/types';
+import type { Caller, Call, DateRange, GroupedCalls, CallGroup } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
+
+const CallLog = dynamic(() => import('@/app/components/call-log'), {
+  loading: () => <div className="flex flex-1 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>,
+  ssr: false
+});
 
 
 export type LeadFilter = 'all' | 'lead' | 'not-lead';
@@ -71,7 +76,7 @@ export default function Home() {
     try {
       if (range && range.from) {
         const startDate = format(startOfDay(range.from), 'yyyy-MM-dd');
-        const endDate = format(endOfDay(range.to), 'yyyy-MM-dd');
+        const endDate = format(endOfDay(range.to || range.from), 'yyyy-MM-dd');
         const fetchedCallers = await fetchCallers({
           start_date: startDate,
           end_date: endDate,
@@ -211,9 +216,7 @@ export default function Home() {
   };
   
   const filteredCallers = useMemo(() => {
-    // Make a copy to avoid sorting the original allCallers state
-    return [...allCallers]
-      .sort((a, b) => new Date(b.last_call).getTime() - new Date(a.last_call).getTime())
+    return allCallers
       .filter(caller => {
         // Search Query Filter
         if (searchQuery) {
@@ -258,13 +261,13 @@ export default function Home() {
   }, []);
   
   const { groupedAndSortedCalls, sortedGroupTitles } = useMemo(() => {
-    const callGroups = Array.from(
-      new Map(filteredCallers.map(caller => [caller.id, caller])).values()
-    ).map((caller): CallGroup => ({
-      caller: caller,
-      calls: callsByPhone[caller.phone] || [],
-      lastCallTimestamp: new Date(caller.last_call),
-    }));
+    const callGroups = filteredCallers
+      .sort((a, b) => new Date(b.last_call).getTime() - new Date(a.last_call).getTime())
+      .map((caller): CallGroup => ({
+        caller: caller,
+        calls: callsByPhone[caller.phone] || [],
+        lastCallTimestamp: new Date(caller.last_call),
+      }));
 
     const groupsByTitle = callGroups.reduce((acc, group) => {
       const title = getGroupTitle(group.lastCallTimestamp);
@@ -288,11 +291,20 @@ export default function Home() {
     }
 
     const sortedTitles = Object.keys(finalGroupedCalls).sort((a, b) => {
+      const aDate = new Date(a);
+      const bDate = new Date(b);
+
       if (a === 'Today') return -1;
       if (b === 'Today') return 1;
       if (a === 'Yesterday') return -1;
       if (b === 'Yesterday') return 1;
-      return new Date(b).getTime() - new Date(a).getTime();
+      
+      // Check if dates are valid before comparing
+      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
+          return bDate.getTime() - aDate.getTime();
+      }
+      // Fallback for non-date titles if any
+      return a.localeCompare(b);
     });
 
     return { groupedAndSortedCalls: finalGroupedCalls, sortedGroupTitles: sortedTitles };

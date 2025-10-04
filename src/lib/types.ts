@@ -1,5 +1,4 @@
 
-import { CallGroup } from "@/app/components/call-log";
 
 export interface Caller {
   id: string;
@@ -32,8 +31,14 @@ export interface Call {
 
 export type DateRange = {
   from: Date;
-  to: Date;
+  to?: Date;
 };
+
+export interface CallGroup {
+  caller: Caller;
+  calls: Call[];
+  lastCallTimestamp: Date;
+}
 
 export type GroupedCalls = Record<string, {
     groups: CallGroup[];
