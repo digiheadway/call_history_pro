@@ -341,19 +341,16 @@ export function CallGroupCard({
                   </Button>
                 </div>
 
-                {caller.note && (
-                    <div className="mt-4 rounded-md border bg-muted/50 p-3 text-sm">
-                        <p className="font-semibold">Lead Note</p>
-                        <p className="text-muted-foreground whitespace-pre-wrap">{caller.note}</p>
-                    </div>
+                {(caller.segment || caller.note) && (
+                  <div className="mt-4 rounded-md border bg-muted/50 p-3 text-sm">
+                    {caller.segment && (
+                      <p className="font-semibold">{caller.segment}</p>
+                    )}
+                    {caller.note && (
+                      <p className="text-muted-foreground whitespace-pre-wrap">{caller.note}</p>
+                    )}
+                  </div>
                 )}
-                {caller.segment && (
-                    <div className="mt-2 rounded-md border bg-muted/50 p-3 text-sm">
-                        <p className="font-semibold">Segment</p>
-                        <p className="text-muted-foreground">{caller.segment}</p>
-                    </div>
-                )}
-
               </div>
             </div>
           </AccordionContent>
