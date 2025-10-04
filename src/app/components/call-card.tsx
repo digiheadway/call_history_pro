@@ -4,7 +4,7 @@
 import { useState, useEffect } from 'react';
 import type { Caller } from '@/lib/types';
 import { fetchCalls } from '@/lib/api';
-import type { CallGroup } from './call-log';
+import type { Call, CallGroup } from './call-log';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
   ArrowDownLeft,
