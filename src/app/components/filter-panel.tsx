@@ -149,20 +149,21 @@ export default function FilterPanel({
         <SheetHeader>
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-6 pb-16">
-            <div>
-              <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search by name or number..."
-                  className="pl-9"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
+        <div className="flex-1 overflow-y-auto">
+          <div className="mt-6 space-y-6">
+              <div>
+                <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search by name or number..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                </div>
               </div>
-            </div>
 
               <Separator />
               
@@ -282,25 +283,27 @@ export default function FilterPanel({
                   </Select>
                 </div>
 
-               <div>
-                <Label className="text-sm font-medium text-foreground">Sync Status</Label>
-                 <Select value={syncFilter} onValueChange={value => setSyncFilter(value as SyncFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by sync status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="done">Done</SelectItem>
-                    <SelectItem value="undone">Undone</SelectItem>
-                  </SelectContent>
-                </Select>
+                 <div>
+                  <Label className="text-sm font-medium text-foreground">Sync Status</Label>
+                   <Select value={syncFilter} onValueChange={value => setSyncFilter(value as SyncFilter)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by sync status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="done">Done</SelectItem>
+                      <SelectItem value="undone">Undone</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            </div>
+          </div>
         </div>
-        <div className="absolute bottom-4 right-4 left-4">
+        <div className="mt-auto border-t pt-4">
              <Button onClick={onClose} className="w-full">Done</Button>
         </div>
       </SheetContent>
     </Sheet>
   );
 }
+    
