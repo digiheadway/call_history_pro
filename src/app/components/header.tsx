@@ -1,8 +1,9 @@
+
 'use client';
 import { Phone, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import type { DateRange as AppDateRange } from '@/app/page';
+import type { DateRange as AppDateRange, ContactFilter, SyncFilter } from '@/app/page';
 import FilterPanel from './filter-panel';
 
 interface HeaderProps {
@@ -10,9 +11,22 @@ interface HeaderProps {
     initialRange?: AppDateRange;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
+    contactFilter: ContactFilter;
+    setContactFilter: (filter: ContactFilter) => void;
+    syncFilter: SyncFilter;
+    setSyncFilter: (filter: SyncFilter) => void;
 }
 
-export default function Header({ onDateRangeChange, initialRange, searchQuery, setSearchQuery }: HeaderProps) {
+export default function Header({ 
+    onDateRangeChange, 
+    initialRange, 
+    searchQuery, 
+    setSearchQuery,
+    contactFilter,
+    setContactFilter,
+    syncFilter,
+    setSyncFilter,
+}: HeaderProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   
   return (
@@ -36,7 +50,13 @@ export default function Header({ onDateRangeChange, initialRange, searchQuery, s
         initialRange={initialRange}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        contactFilter={contactFilter}
+        setContactFilter={setContactFilter}
+        syncFilter={syncFilter}
+        setSyncFilter={setSyncFilter}
       />
     </>
   );
 }
+
+    

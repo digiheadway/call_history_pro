@@ -1,16 +1,18 @@
+
 'use client';
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useState } from "react";
 import { DateRange } from "react-day-picker";
-import { format, subDays } from 'date-fns';
+import { format, subDays, startOfToday, startOfYesterday } from 'date-fns';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
-import type { DateRange as AppDateRange } from '@/app/page';
+import type { DateRange as AppDateRange, ContactFilter, SyncFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
 
 interface FilterPanelProps {
   isOpen: boolean;
@@ -19,6 +21,10 @@ interface FilterPanelProps {
   initialRange?: AppDateRange;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  contactFilter: ContactFilter;
+  setContactFilter: (filter: ContactFilter) => void;
+  syncFilter: SyncFilter;
+  setSyncFilter: (filter: SyncFilter) => void;
 }
 
 export default function FilterPanel({
@@ -27,33 +33,64 @@ export default function FilterPanel({
   onDateRangeChange,
   initialRange,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  contactFilter,
+  setContactFilter,
+  syncFilter,
+  setSyncFilter,
 }: FilterPanelProps) {
   const [date, setDate] = useState<DateRange | undefined>(initialRange);
   const [preset, setPreset] = useState<string>("7");
+  const [calendarMode, setCalendarMode] = useState<'range' | 'single'>('range');
 
   const handlePresetChange = (value: string) => {
     setPreset(value);
-    let newRange: AppDateRange | undefined;
     const to = new Date();
+    to.setHours(23, 59, 59, 999); // Ensure 'to' date includes the full day
+    
+    let newRange: AppDateRange | undefined;
+    
     switch(value) {
+      case 'today':
+        newRange = { from: startOfToday(), to };
+        setCalendarMode('range');
+        break;
+      case 'yesterday':
+        const yesterday = startOfYesterday();
+        newRange = { from: yesterday, to: yesterday };
+        setCalendarMode('range');
+        break;
       case '3':
-        newRange = { from: subDays(to, 3), to };
+        newRange = { from: subDays(to, 2), to };
+        setCalendarMode('range');
         break;
       case '7':
-        newRange = { from: subDays(to, 7), to };
+        newRange = { from: subDays(to, 6), to };
+        setCalendarMode('range');
+        break;
+      case '14':
+        newRange = { from: subDays(to, 13), to };
+        setCalendarMode('range');
         break;
       case '30':
-        newRange = { from: subDays(to, 30), to };
+        newRange = { from: subDays(to, 29), to };
+        setCalendarMode('range');
         break;
-      case 'custom':
-        // Let the calendar handle it
+      case 'day':
+        setCalendarMode('single');
+        // Let the calendar handle setting the date
+        return; 
+      case 'range':
+        setCalendarMode('range');
+        // Let the calendar handle setting the date
         return;
       default:
         newRange = undefined;
     }
     setDate(newRange);
-    onDateRangeChange(newRange);
+    if (newRange) {
+        onDateRangeChange(newRange);
+    }
   }
 
   const handleDateChange = (newDate: DateRange | undefined) => {
@@ -64,8 +101,9 @@ export default function FilterPanel({
       adjustedTo.setHours(23, 59, 59, 999);
       onDateRangeChange({ from: newDate.from, to: adjustedTo });
     }
-    if (preset !== 'custom') {
-      setPreset('custom');
+    // Automatically switch preset if a date is picked manually
+    if (preset !== 'day' && preset !== 'range') {
+        setPreset(calendarMode === 'single' ? 'day' : 'range');
     }
   }
 
@@ -100,46 +138,83 @@ export default function FilterPanel({
                     <SelectValue placeholder="Select range" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="yesterday">Yesterday</SelectItem>
                     <SelectItem value="3">Last 3 days</SelectItem>
                     <SelectItem value="7">Last 7 days</SelectItem>
+                    <SelectItem value="14">Last 14 days</SelectItem>
                     <SelectItem value="30">Last 30 days</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
+                    <SelectItem value="day">Select Day</SelectItem>
+                    <SelectItem value="range">Select Date Range</SelectItem>
                   </SelectContent>
                 </Select>
 
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      id="date"
-                      variant={"outline"}
-                      className="justify-start text-left font-normal"
-                    >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date?.from ? (
-                        date.to ? (
-                          <>
-                            {format(date.from, "LLL dd, y")} -{" "}
-                            {format(date.to, "LLL dd, y")}
-                          </>
+                {(preset === 'day' || preset === 'range') && (
+                    <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                        id="date"
+                        variant={"outline"}
+                        className="justify-start text-left font-normal"
+                        >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                            date.to && date.to !== date.from ? (
+                            <>
+                                {format(date.from, "LLL dd, y")} -{" "}
+                                {format(date.to, "LLL dd, y")}
+                            </>
+                            ) : (
+                            format(date.from, "LLL dd, y")
+                            )
                         ) : (
-                          format(date.from, "LLL dd, y")
-                        )
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      initialFocus
-                      mode="range"
-                      defaultMonth={date?.from}
-                      selected={date}
-                      onSelect={handleDateChange}
-                      numberOfMonths={1}
-                    />
-                  </PopoverContent>
-                </Popover>
+                            <span>Pick a date</span>
+                        )}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                        initialFocus
+                        mode={calendarMode}
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={handleDateChange}
+                        numberOfMonths={1}
+                        />
+                    </PopoverContent>
+                    </Popover>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <div>
+                <Label className="text-sm font-medium text-foreground">Contact Type</Label>
+                 <Select value={contactFilter} onValueChange={value => setContactFilter(value as ContactFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by contact type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Contacts</SelectItem>
+                    <SelectItem value="leads">Leads Only</SelectItem>
+                    <SelectItem value="unsaved">Unsaved Only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+               <div>
+                <Label className="text-sm font-medium text-foreground">Sync Status</Label>
+                 <Select value={syncFilter} onValueChange={value => setSyncFilter(value as SyncFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by sync status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="done">Done Only</SelectItem>
+                    <SelectItem value="undone">Undone Only</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
         </div>
@@ -150,3 +225,5 @@ export default function FilterPanel({
     </Sheet>
   );
 }
+
+    

@@ -19,6 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 import { subDays } from 'date-fns';
 
+export type ContactFilter = 'all' | 'leads' | 'unsaved';
+export type SyncFilter = 'all' | 'done' | 'undone';
+
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [allCallers, setAllCallers] = useState<Caller[]>([]);
@@ -34,6 +37,8 @@ export default function Home() {
   }, (value) => value ? { from: new Date(value.from), to: new Date(value.to) } : undefined);
 
   const [currentlyPlaying, setCurrentlyPlaying] = usePersistentState<string | null>('currentlyPlaying', null);
+  const [contactFilter, setContactFilter] = usePersistentState<ContactFilter>('contactFilter', 'all');
+  const [syncFilter, setSyncFilter] = usePersistentState<SyncFilter>('syncFilter', 'all');
 
 
   const { toast } = useToast();
@@ -45,6 +50,7 @@ export default function Home() {
         return prev.filter(item => item !== id);
       } else {
         const newExpanded = [...prev, id];
+        // Keep max 2 accordions open
         if (newExpanded.length > 2) {
           return newExpanded.slice(newExpanded.length - 2);
         }
@@ -197,16 +203,34 @@ export default function Home() {
   };
   
   const filteredCallers = useMemo(() => {
-    if (!searchQuery) {
-      return allCallers;
+    let callers = [...allCallers];
+
+    // Search Query Filter
+    if (searchQuery) {
+      const lowercasedQuery = searchQuery.toLowerCase();
+      callers = callers.filter(caller => {
+        const name = caller.lead_name || caller.custom_name || '';
+        const phone = caller.phone || '';
+        return name.toLowerCase().includes(lowercasedQuery) || phone.includes(lowercasedQuery);
+      });
     }
-    const lowercasedQuery = searchQuery.toLowerCase();
-    return allCallers.filter(caller => {
-      const name = caller.lead_name || caller.custom_name || '';
-      const phone = caller.phone || '';
-      return name.toLowerCase().includes(lowercasedQuery) || phone.includes(lowercasedQuery);
-    });
-  }, [allCallers, searchQuery]);
+    
+    // Contact Filter
+    if (contactFilter === 'leads') {
+        callers = callers.filter(caller => !!caller.lead_id);
+    } else if (contactFilter === 'unsaved') {
+        callers = callers.filter(caller => !caller.lead_id && !caller.custom_name && !caller.caller_type);
+    }
+
+    // Sync Filter
+    if (syncFilter === 'done') {
+        callers = callers.filter(caller => caller.last_sync);
+    } else if (syncFilter === 'undone') {
+        callers = callers.filter(caller => !caller.last_sync);
+    }
+    
+    return callers;
+  }, [allCallers, searchQuery, contactFilter, syncFilter]);
 
 
   const callGroups: CallGroup[] = useMemo(() => {
@@ -282,6 +306,10 @@ export default function Home() {
         initialRange={dateRange}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        contactFilter={contactFilter}
+        setContactFilter={setContactFilter}
+        syncFilter={syncFilter}
+        setSyncFilter={setSyncFilter}
       />
       <CallLog 
         groupedCalls={groupedAndSortedCalls}
@@ -303,3 +331,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
