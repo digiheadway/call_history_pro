@@ -148,20 +148,22 @@ export default function CallLog({
         return !isMissedOrRejected && isShortIncoming;
     });
   }, [allGroups, missedIds, rejectedIds]);
-  const mayBePendingIds = useMemo(() => new Set(mayBePendingGroups.map(g => g.caller.id)), [mayBePendingGroups]);
 
   const neverAttendedGroups = useMemo(() => {
-      return allGroups.filter(g => !connectedIds.has(g.caller.id));
-  }, [allGroups, connectedIds]);
+      // Caller where no call (incoming or outgoing) has ever been connected for more than 5s
+      const phoneNumbersWithConnection = new Set(allCallers.filter(c => c.last_call_duration > 5).map(c => c.phone));
+      return allGroups.filter(g => !phoneNumbersWithConnection.has(g.caller.phone));
+  }, [allGroups, allCallers]);
   const neverAttendedIds = useMemo(() => new Set(neverAttendedGroups.map(g => g.caller.id)), [neverAttendedGroups]);
 
   const outgoingNotConnectedGroups = useMemo(() => {
+    // Last call is outgoing with 0 duration, AND they are NOT in the "never attended" group
+    const phoneNumbersWithConnection = new Set(allCallers.filter(c => c.last_call_duration > 5).map(c => c.phone));
     return allGroups.filter(g => {
-        const hasHadConnection = allGroups.some(group => group.caller.phone === g.caller.phone && group.caller.last_call_duration > 5);
         const isUnsuccessfulOutgoing = g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration === 0;
-        return hasHadConnection && isUnsuccessfulOutgoing && !neverAttendedIds.has(g.caller.id);
+        return isUnsuccessfulOutgoing && phoneNumbersWithConnection.has(g.caller.phone);
     });
-  }, [allGroups, neverAttendedIds]);
+  }, [allGroups, allCallers]);
   
   const filterGroupsByTitle = (groups: CallGroup[]) => {
     const titleMap: Record<string, CallGroup[]> = {};
@@ -227,7 +229,7 @@ export default function CallLog({
     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
       <div className="overflow-x-auto px-4 pt-4">
         <div className="inline-block">
-          <TabsList className="bg-primary/10">
+          <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="connected">Connected</TabsTrigger>
             <TabsTrigger value="missed">Missed</TabsTrigger>
