@@ -149,7 +149,7 @@ export default function FilterPanel({
         <SheetHeader>
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
-        <div className="flex-grow mt-6 space-y-6 overflow-y-auto">
+        <div className="flex-1 mt-6 space-y-6 overflow-y-auto">
             <div>
               <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
               <div className="relative">
@@ -297,7 +297,7 @@ export default function FilterPanel({
               </div>
             </div>
         </div>
-        <div className="mt-auto p-4">
+        <div className="border-t p-4">
              <Button onClick={onClose} className="w-full">Done</Button>
         </div>
       </SheetContent>
