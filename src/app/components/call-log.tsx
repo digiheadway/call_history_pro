@@ -146,23 +146,17 @@ export default function CallLog({
   const connectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_duration >= 5), [allGroups]);
   const connectedIds = useMemo(() => new Set(connectedGroups.map(g => g.caller.id)), [connectedGroups]);
 
-  // Missed: last_call=incoming, duration=0, type=missed
-  const missedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'missed' && g.caller.last_call_duration === 0), [allGroups]);
+  // Missed: (last_call_type=missed, duration=0) OR (last_call_type=incoming, 0 < duration < 5)
+  const missedGroups = useMemo(() => allGroups.filter(g => 
+    (g.caller.last_call_type === 'missed' && g.caller.last_call_duration === 0) ||
+    (g.caller.last_call_type === 'incoming' && g.caller.last_call_duration > 0 && g.caller.last_call_duration < 5)
+  ), [allGroups]);
   const missedIds = useMemo(() => new Set(missedGroups.map(g => g.caller.id)), [missedGroups]);
 
   // Rejected: last_call=incoming, type=rejected
   const rejectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'rejected'), [allGroups]);
   const rejectedIds = useMemo(() => new Set(rejectedGroups.map(g => g.caller.id)), [rejectedGroups]);
-
-  // May Be Missed: last_call=incoming, 0 < duration < 5
-  const mayBeMissedGroups = useMemo(() => {
-    return allGroups.filter(g => {
-      const isMayBeMissed = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration > 0 && g.caller.last_call_duration < 5;
-      return isMayBeMissed && !connectedIds.has(g.caller.id) && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id);
-    });
-  }, [allGroups, connectedIds, missedIds, rejectedIds]);
-  const mayBeMissedIds = useMemo(() => new Set(mayBeMissedGroups.map(g => g.caller.id)), [mayBeMissedGroups]);
-
+  
   // Outgoing Failed: last_call=outgoing, duration < 5
   const outgoingFailedGroups = useMemo(() => {
     return allGroups.filter(g => {
@@ -177,10 +171,10 @@ export default function CallLog({
     return new Set(allCallers.filter(c => c.last_call_duration >= 5).map(c => c.phone));
   }, [allCallers]);
   
-  // Never Attended: calls_in_range >= 2, last call is Outgoing Failed, and no connected call EVER for this phone number
+  // Never Attended: total calls >= 2, last call is Outgoing Failed, and no connected call EVER for this phone number
   const neverAttendedGroups = useMemo(() => {
     return allGroups.filter(g => {
-      if (g.caller.calls_in_range < 2) return false;
+      if (g.caller.calls < 2) return false;
       if (phoneNumbersWithConnection.has(g.caller.phone)) return false;
       return outgoingFailedIds.has(g.caller.id);
     });
@@ -191,9 +185,9 @@ export default function CallLog({
   const mayBePendingGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isMayBePending = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration >= 0 && g.caller.last_call_duration < 5;
-      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !neverAttendedIds.has(g.caller.id) && !mayBeMissedIds.has(g.caller.id);
+      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !neverAttendedIds.has(g.caller.id);
     });
-  }, [allGroups, missedIds, rejectedIds, connectedIds, neverAttendedIds, mayBeMissedIds]);
+  }, [allGroups, missedIds, rejectedIds, connectedIds, neverAttendedIds]);
 
 
   const filterGroupsByTitle = (groups: CallGroup[]) => {
@@ -243,10 +237,7 @@ export default function CallLog({
 
   const groupedRejected = useMemo(() => filterGroupsByTitle(rejectedGroups), [rejectedGroups, sortedGroupTitles, groupedCalls]);
   const sortedRejectedTitles = useMemo(() => getSortedTitlesForGroups(rejectedGroups), [rejectedGroups, sortedGroupTitles, groupedCalls]);
-  
-  const groupedMayBeMissed = useMemo(() => filterGroupsByTitle(mayBeMissedGroups), [mayBeMissedGroups, sortedGroupTitles, groupedCalls]);
-  const sortedMayBeMissedTitles = useMemo(() => getSortedTitlesForGroups(mayBeMissedGroups), [mayBeMissedGroups, sortedGroupTitles, groupedCalls]);
-  
+    
   const groupedOutgoingFailed = useMemo(() => filterGroupsByTitle(outgoingFailedGroups), [outgoingFailedGroups, sortedGroupTitles, groupedCalls]);
   const sortedOutgoingFailedTitles = useMemo(() => getSortedTitlesForGroups(outgoingFailedGroups), [outgoingFailedGroups, sortedGroupTitles, groupedCalls]);
   
@@ -268,7 +259,6 @@ export default function CallLog({
             <TabsTrigger value="connected">Connected</TabsTrigger>
             <TabsTrigger value="missed">Missed</TabsTrigger>
             <TabsTrigger value="rejected">Rejected</TabsTrigger>
-            <TabsTrigger value="may-be-missed">May Be Missed</TabsTrigger>
             <TabsTrigger value="outgoing-failed">Outgoing Failed</TabsTrigger>
             <TabsTrigger value="never-attended">Never Attended</TabsTrigger>
             <TabsTrigger value="may-be-pending">May Be Pending</TabsTrigger>
@@ -304,14 +294,6 @@ export default function CallLog({
             groups={groupedRejected} 
             sortedGroupTitles={sortedRejectedTitles}
             tab="Rejected"
-            {...listProps}
-        />
-      </TabsContent>
-       <TabsContent value="may-be-missed" className="flex-1 overflow-hidden">
-        <CallGroupList 
-            groups={groupedMayBeMissed} 
-            sortedGroupTitles={sortedMayBeMissedTitles}
-            tab="May be Missed"
             {...listProps}
         />
       </TabsContent>
