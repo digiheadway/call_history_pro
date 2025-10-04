@@ -12,7 +12,7 @@ export function usePersistentState<T>(key: string, defaultValue: T, parser?: Par
     }
     try {
       const storedValue = window.localStorage.getItem(key);
-      if (storedValue) {
+      if (storedValue && storedValue !== 'undefined') {
         const parsed = JSON.parse(storedValue);
         return parser ? parser(parsed) : parsed;
       }
