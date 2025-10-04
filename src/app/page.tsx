@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 
 
-export type ContactFilter = 'all' | 'typed' | 'not-typed';
+export type ContactFilter = 'all' | 'lead' | 'custom' | 'none' | 'typed-predefined' | 'typed' | 'not-typed';
 export type SyncFilter = 'all' | 'done' | 'undone';
 export type NoteFilter = 'all' | 'with-note' | 'without-note';
 

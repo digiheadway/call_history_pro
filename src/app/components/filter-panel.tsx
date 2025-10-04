@@ -34,7 +34,7 @@ const getPresetFromRange = (range?: DateRange): string => {
 
     const today = startOfToday();
     const from = startOfDay(range.from);
-    const to = startOfDay(range.to);
+    const to = endOfDay(range.to);
 
     if (isSameDay(from, today) && isSameDay(to, today)) return 'today';
     if (isSameDay(from, startOfYesterday()) && isSameDay(to, startOfYesterday())) return 'yesterday';
@@ -266,5 +266,4 @@ export default function FilterPanel({
     </Sheet>
   );
 }
-
     
