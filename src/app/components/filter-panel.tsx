@@ -6,9 +6,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
-import { format, subDays, startOfToday, startOfYesterday, isSameDay, startOfDay, endOfDay } from 'date-fns';
+import { format, subDays, startOfToday, isSameDay, startOfDay, endOfDay } from 'date-fns';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
-import type { ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
+import type { LeadFilter, CustomNameFilter, TypeFilter, NoteFilter, SyncFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -21,12 +21,16 @@ interface FilterPanelProps {
   initialRange?: DateRange;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
-  contactFilter: ContactFilter;
-  setContactFilter: (filter: ContactFilter) => void;
-  syncFilter: SyncFilter;
-  setSyncFilter: (filter: SyncFilter) => void;
+  leadFilter: LeadFilter;
+  setLeadFilter: (filter: LeadFilter) => void;
+  customNameFilter: CustomNameFilter;
+  setCustomNameFilter: (filter: CustomNameFilter) => void;
+  typeFilter: TypeFilter;
+  setTypeFilter: (filter: TypeFilter) => void;
   noteFilter: NoteFilter;
   setNoteFilter: (filter: NoteFilter) => void;
+  syncFilter: SyncFilter;
+  setSyncFilter: (filter: SyncFilter) => void;
 }
 
 const getPresetFromRange = (range?: DateRange): string => {
@@ -37,7 +41,7 @@ const getPresetFromRange = (range?: DateRange): string => {
     const to = endOfDay(range.to);
 
     if (isSameDay(from, today) && isSameDay(to, today)) return 'today';
-    if (isSameDay(from, startOfYesterday()) && isSameDay(to, startOfYesterday())) return 'yesterday';
+    if (isSameDay(from, subDays(today, 1)) && isSameDay(to, subDays(today, 1))) return 'yesterday';
     if (isSameDay(from, subDays(today, 2)) && isSameDay(to, today)) return '3';
     if (isSameDay(from, subDays(today, 6)) && isSameDay(to, today)) return '7';
     if (isSameDay(from, subDays(today, 13)) && isSameDay(to, today)) return '14';
@@ -55,12 +59,16 @@ export default function FilterPanel({
   initialRange,
   searchQuery,
   setSearchQuery,
-  contactFilter,
-  setContactFilter,
-  syncFilter,
-  setSyncFilter,
+  leadFilter,
+  setLeadFilter,
+  customNameFilter,
+  setCustomNameFilter,
+  typeFilter,
+  setTypeFilter,
   noteFilter,
   setNoteFilter,
+  syncFilter,
+  setSyncFilter
 }: FilterPanelProps) {
   const [date, setDate] = useState<DateRange | undefined>(initialRange);
   const [preset, setPreset] = useState<string>(getPresetFromRange(initialRange));
@@ -86,7 +94,7 @@ export default function FilterPanel({
         setCalendarMode('range');
         break;
       case 'yesterday':
-        const yesterday = startOfYesterday();
+        const yesterday = subDays(today, 1);
         newRange = { from: yesterday, to: yesterday };
         setCalendarMode('range');
         break;
@@ -118,7 +126,7 @@ export default function FilterPanel({
         newRange = undefined;
     }
     setDate(newRange);
-    if (newRange) {
+    if (newRange && newRange.from) {
         onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to || newRange.from) });
     }
   }
@@ -137,11 +145,11 @@ export default function FilterPanel({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent onOpenAutoFocus={(e) => e.preventDefault()}>
+      <SheetContent onOpenAutoFocus={(e) => e.preventDefault()} className="overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-6 pb-16">
             <div>
               <h3 className="mb-2 text-sm font-medium text-foreground">Search</h3>
               <div className="relative">
@@ -219,32 +227,48 @@ export default function FilterPanel({
 
             <div className="space-y-4">
               <div>
+                <Label className="text-sm font-medium text-foreground">Lead Status</Label>
+                 <Select value={leadFilter} onValueChange={value => setLeadFilter(value as LeadFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by lead status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="lead">Leads Only</SelectItem>
+                    <SelectItem value="not-lead">Not Leads</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium text-foreground">Custom Name</Label>
+                 <Select value={customNameFilter} onValueChange={value => setCustomNameFilter(value as CustomNameFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by custom name" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="set">Name Set</SelectItem>
+                    <SelectItem value="not-set">Name Not Set</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+               <div>
                 <Label className="text-sm font-medium text-foreground">Contact Type</Label>
-                 <Select value={contactFilter} onValueChange={value => setContactFilter(value as ContactFilter)}>
+                 <Select value={typeFilter} onValueChange={value => setTypeFilter(value as TypeFilter)}>
                   <SelectTrigger>
                     <SelectValue placeholder="Filter by contact type" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Contacts</SelectItem>
-                    <SelectItem value="typed">Type Defined</SelectItem>
-                    <SelectItem value="not-typed">Type Empty</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-               <div>
-                <Label className="text-sm font-medium text-foreground">Sync Status</Label>
-                 <Select value={syncFilter} onValueChange={value => setSyncFilter(value as SyncFilter)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by sync status" />
-                  </SelectTrigger>
-                  <SelectContent>
                     <SelectItem value="all">All</SelectItem>
-                    <SelectItem value="done">Done Only</SelectItem>
-                    <SelectItem value="undone">Undone Only</SelectItem>
+                    <SelectItem value="set">Type Set</SelectItem>
+                    <SelectItem value="not-set">Type Not Set</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-               <div>
+
+              <div>
                 <Label className="text-sm font-medium text-foreground">Person Note</Label>
                  <Select value={noteFilter} onValueChange={value => setNoteFilter(value as NoteFilter)}>
                   <SelectTrigger>
@@ -254,6 +278,20 @@ export default function FilterPanel({
                     <SelectItem value="all">All</SelectItem>
                     <SelectItem value="with-note">With Note</SelectItem>
                     <SelectItem value="without-note">Without Note</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+               <div>
+                <Label className="text-sm font-medium text-foreground">Sync Status</Label>
+                 <Select value={syncFilter} onValueChange={value => setSyncFilter(value as SyncFilter)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by sync status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                    <SelectItem value="undone">Undone</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

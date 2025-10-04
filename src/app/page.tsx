@@ -19,9 +19,11 @@ import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 
 
-export type ContactFilter = 'all' | 'lead' | 'custom' | 'none' | 'typed-predefined' | 'typed' | 'not-typed';
-export type SyncFilter = 'all' | 'done' | 'undone';
+export type LeadFilter = 'all' | 'lead' | 'not-lead';
+export type CustomNameFilter = 'all' | 'set' | 'not-set';
+export type TypeFilter = 'all' | 'set' | 'not-set';
 export type NoteFilter = 'all' | 'with-note' | 'without-note';
+export type SyncFilter = 'all' | 'done' | 'undone';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -35,12 +37,15 @@ export default function Home() {
   const [dateRange, setDateRange] = usePersistentState<DateRange | undefined>('dateRange', {
     from: subDays(new Date(), 2),
     to: new Date(),
-  }, (value) => value ? { from: new Date(value.from), to: new Date(value.to) } : undefined);
+  }, (value) => value && value.from && value.to ? { from: new Date(value.from), to: new Date(value.to) } : { from: subDays(new Date(), 2), to: new Date() });
 
   const [currentlyPlaying, setCurrentlyPlaying] = usePersistentState<string | null>('currentlyPlaying', null);
-  const [contactFilter, setContactFilter] = usePersistentState<ContactFilter>('contactFilter', 'all');
-  const [syncFilter, setSyncFilter] = usePersistentState<SyncFilter>('syncFilter', 'all');
+  
+  const [leadFilter, setLeadFilter] = usePersistentState<LeadFilter>('leadFilter', 'all');
+  const [customNameFilter, setCustomNameFilter] = usePersistentState<CustomNameFilter>('customNameFilter', 'all');
+  const [typeFilter, setTypeFilter] = usePersistentState<TypeFilter>('typeFilter', 'all');
   const [noteFilter, setNoteFilter] = usePersistentState<NoteFilter>('noteFilter', 'all');
+  const [syncFilter, setSyncFilter] = usePersistentState<SyncFilter>('syncFilter', 'all');
 
 
   const { toast } = useToast();
@@ -206,41 +211,40 @@ export default function Home() {
   };
   
   const filteredCallers = useMemo(() => {
-    let callers = [...allCallers];
-
-    // Search Query Filter
-    if (searchQuery) {
-      const lowercasedQuery = searchQuery.toLowerCase();
-      callers = callers.filter(caller => {
+    return allCallers.filter(caller => {
+      // Search Query Filter
+      if (searchQuery) {
+        const lowercasedQuery = searchQuery.toLowerCase();
         const name = caller.lead_name || caller.custom_name || '';
         const phone = caller.phone || '';
-        return name.toLowerCase().includes(lowercasedQuery) || phone.includes(lowercasedQuery);
-      });
-    }
-    
-    // Contact Filter
-    if (contactFilter === 'typed') {
-        callers = callers.filter(caller => caller.caller_type && caller.caller_type.trim() !== '');
-    } else if (contactFilter === 'not-typed') {
-        callers = callers.filter(caller => !caller.caller_type || caller.caller_type.trim() === '');
-    }
+        if (!name.toLowerCase().includes(lowercasedQuery) && !phone.includes(lowercasedQuery)) {
+          return false;
+        }
+      }
 
-    // Sync Filter
-    if (syncFilter === 'done') {
-        callers = callers.filter(caller => caller.last_sync);
-    } else if (syncFilter === 'undone') {
-        callers = callers.filter(caller => !caller.last_sync);
-    }
+      // Lead Filter
+      if (leadFilter === 'lead' && !caller.lead_id) return false;
+      if (leadFilter === 'not-lead' && caller.lead_id) return false;
 
-    // Note Filter
-    if (noteFilter === 'with-note') {
-        callers = callers.filter(caller => caller.note && caller.note.trim() !== '');
-    } else if (noteFilter === 'without-note') {
-        callers = callers.filter(caller => !caller.note || caller.note.trim() === '');
-    }
-    
-    return callers;
-  }, [allCallers, searchQuery, contactFilter, syncFilter, noteFilter]);
+      // Custom Name Filter
+      if (customNameFilter === 'set' && (!caller.custom_name || caller.custom_name.trim() === '')) return false;
+      if (customNameFilter === 'not-set' && caller.custom_name && caller.custom_name.trim() !== '') return false;
+
+      // Type Filter
+      if (typeFilter === 'set' && (!caller.caller_type || caller.caller_type.trim() === '')) return false;
+      if (typeFilter === 'not-set' && caller.caller_type && caller.caller_type.trim() !== '') return false;
+
+      // Note Filter
+      if (noteFilter === 'with-note' && (!caller.note || caller.note.trim() === '')) return false;
+      if (noteFilter === 'without-note' && caller.note && caller.note.trim() !== '') return false;
+
+      // Sync Filter
+      if (syncFilter === 'done' && !caller.last_sync) return false;
+      if (syncFilter === 'undone' && caller.last_sync) return false;
+
+      return true;
+    });
+  }, [allCallers, searchQuery, leadFilter, customNameFilter, typeFilter, noteFilter, syncFilter]);
 
 
   const callGroups: CallGroup[] = useMemo(() => {
@@ -307,12 +311,16 @@ export default function Home() {
         initialRange={dateRange}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        contactFilter={contactFilter}
-        setContactFilter={setContactFilter}
-        syncFilter={syncFilter}
-        setSyncFilter={setSyncFilter}
+        leadFilter={leadFilter}
+        setLeadFilter={setLeadFilter}
+        customNameFilter={customNameFilter}
+        setCustomNameFilter={setCustomNameFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
         noteFilter={noteFilter}
         setNoteFilter={setNoteFilter}
+        syncFilter={syncFilter}
+        setSyncFilter={setSyncFilter}
       />
       {loading ? (
         <div className="flex flex-1 items-center justify-center">

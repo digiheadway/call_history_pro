@@ -3,7 +3,7 @@
 import { Phone, SlidersHorizontal } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import type { DateRange as AppDateRange, ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
+import type { DateRange as AppDateRange, LeadFilter, CustomNameFilter, TypeFilter, NoteFilter, SyncFilter } from '@/app/page';
 import FilterPanel from './filter-panel';
 
 interface HeaderProps {
@@ -11,12 +11,16 @@ interface HeaderProps {
     initialRange?: AppDateRange;
     searchQuery: string;
     setSearchQuery: (query: string) => void;
-    contactFilter: ContactFilter;
-    setContactFilter: (filter: ContactFilter) => void;
-    syncFilter: SyncFilter;
-    setSyncFilter: (filter: SyncFilter) => void;
+    leadFilter: LeadFilter;
+    setLeadFilter: (filter: LeadFilter) => void;
+    customNameFilter: CustomNameFilter;
+    setCustomNameFilter: (filter: CustomNameFilter) => void;
+    typeFilter: TypeFilter;
+    setTypeFilter: (filter: TypeFilter) => void;
     noteFilter: NoteFilter;
     setNoteFilter: (filter: NoteFilter) => void;
+    syncFilter: SyncFilter;
+    setSyncFilter: (filter: SyncFilter) => void;
 }
 
 export default function Header({ 
@@ -24,12 +28,16 @@ export default function Header({
     initialRange, 
     searchQuery, 
     setSearchQuery,
-    contactFilter,
-    setContactFilter,
-    syncFilter,
-    setSyncFilter,
+    leadFilter,
+    setLeadFilter,
+    customNameFilter,
+    setCustomNameFilter,
+    typeFilter,
+    setTypeFilter,
     noteFilter,
     setNoteFilter,
+    syncFilter,
+    setSyncFilter,
 }: HeaderProps) {
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   
@@ -54,12 +62,16 @@ export default function Header({
         initialRange={initialRange}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        contactFilter={contactFilter}
-        setContactFilter={setContactFilter}
-        syncFilter={syncFilter}
-        setSyncFilter={setSyncFilter}
+        leadFilter={leadFilter}
+        setLeadFilter={setLeadFilter}
+        customNameFilter={customNameFilter}
+        setCustomNameFilter={setCustomNameFilter}
+        typeFilter={typeFilter}
+        setTypeFilter={setTypeFilter}
         noteFilter={noteFilter}
         setNoteFilter={setNoteFilter}
+        syncFilter={syncFilter}
+        setSyncFilter={setSyncFilter}
       />
     </>
   );
