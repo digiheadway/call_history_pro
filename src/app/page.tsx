@@ -34,7 +34,7 @@ export default function Home() {
   const [expandedAccordions, setExpandedAccordions] = usePersistentState<string[]>('expandedAccordions', []);
   
   const [dateRange, setDateRange] = usePersistentState<DateRange | undefined>('dateRange', {
-    from: subDays(new Date(), 7),
+    from: subDays(new Date(), 2),
     to: new Date(),
   }, (value) => value ? { from: new Date(value.from), to: new Date(value.to) } : undefined);
 
@@ -195,7 +195,8 @@ export default function Home() {
         title: 'Info Updated',
         description: 'The contact information has been saved.',
       });
-    } catch (error) {
+    } catch (error)
+ {
       console.error('Failed to update caller info:', error);
       toast({
         variant: 'destructive',

@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
-import { format, subDays, startOfToday, startOfYesterday } from 'date-fns';
+import { format, subDays, startOfToday, startOfYesterday, isSameDay, startOfDay } from 'date-fns';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
 import type { DateRange as AppDateRange, ContactFilter, SyncFilter, NoteFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -29,6 +29,25 @@ interface FilterPanelProps {
   setNoteFilter: (filter: NoteFilter) => void;
 }
 
+const getPresetFromRange = (range?: AppDateRange): string => {
+    if (!range || !range.from || !range.to) return 'range';
+
+    const today = startOfToday();
+    const from = startOfDay(range.from);
+    const to = startOfDay(range.to);
+
+    if (isSameDay(from, today) && isSameDay(to, today)) return 'today';
+    if (isSameDay(from, startOfYesterday()) && isSameDay(to, startOfYesterday())) return 'yesterday';
+    if (isSameDay(from, subDays(today, 2)) && isSameDay(to, today)) return '3';
+    if (isSameDay(from, subDays(today, 6)) && isSameDay(to, today)) return '7';
+    if (isSameDay(from, subDays(today, 13)) && isSameDay(to, today)) return '14';
+    if (isSameDay(from, subDays(today, 29)) && isSameDay(to, today)) return '30';
+    if (isSameDay(from, to)) return 'day';
+    
+    return 'range';
+}
+
+
 export default function FilterPanel({
   isOpen,
   onClose,
@@ -44,8 +63,14 @@ export default function FilterPanel({
   setNoteFilter,
 }: FilterPanelProps) {
   const [date, setDate] = useState<DateRange | undefined>(initialRange);
-  const [preset, setPreset] = useState<string>("7");
-  const [calendarMode, setCalendarMode] = useState<'range' | 'single'>('range');
+  const [preset, setPreset] = useState<string>(getPresetFromRange(initialRange));
+  const [calendarMode, setCalendarMode] = useState<'range' | 'single'>(preset === 'day' ? 'single' : 'range');
+  
+  useEffect(() => {
+    setDate(initialRange);
+    setPreset(getPresetFromRange(initialRange));
+  }, [initialRange]);
+
 
   const handlePresetChange = (value: string) => {
     setPreset(value);
@@ -61,7 +86,7 @@ export default function FilterPanel({
         break;
       case 'yesterday':
         const yesterday = startOfYesterday();
-        newRange = { from: yesterday, to: yesterday };
+        newRange = { from: yesterday, to: new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate(), 23, 59, 59, 999) };
         setCalendarMode('range');
         break;
       case '3':
@@ -113,7 +138,7 @@ export default function FilterPanel({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent>
+      <SheetContent onOpenAutoFocus={(e) => e.preventDefault()}>
         <SheetHeader>
           <SheetTitle>Filters & Search</SheetTitle>
         </SheetHeader>
@@ -163,7 +188,7 @@ export default function FilterPanel({
                         >
                         <CalendarIcon className="mr-2 h-4 w-4" />
                         {date?.from ? (
-                            date.to && date.to !== date.from ? (
+                            date.to && !isSameDay(date.from, date.to) ? (
                             <>
                                 {format(date.from, "LLL dd, y")} -{" "}
                                 {format(date.to, "LLL dd, y")}
@@ -243,3 +268,5 @@ export default function FilterPanel({
     </Sheet>
   );
 }
+
+    
