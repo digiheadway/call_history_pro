@@ -1,4 +1,13 @@
 import type {NextConfig} from 'next';
+import createPwa from 'next-pwa';
+
+const withPWA = createPwa({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development',
+});
+
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -26,10 +35,4 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
-        pathname: '/**',
-      },
-    ],
-  },
-};
-
-export default nextConfig;
+        
