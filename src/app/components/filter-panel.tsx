@@ -110,18 +110,19 @@ export default function FilterPanel({
         break;
       case 'day':
         setCalendarMode('single');
-        setDate(undefined); // Clear date to allow new single selection
+        setDate(undefined); 
         setIsPopoverOpen(true);
         return; 
       case 'range':
         setCalendarMode('range');
-        setDate(undefined); // Clear date to allow new range selection
+        setDate(undefined);
         setIsPopoverOpen(true);
         return;
       default:
         newRange = undefined;
     }
-
+    
+    setIsPopoverOpen(false);
     setDate(newRange);
     if (newRange?.from) {
         onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to || newRange.from) });
@@ -303,4 +304,6 @@ export default function FilterPanel({
     </Sheet>
   );
 }
+    
+
     
