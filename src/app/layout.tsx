@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 export const metadata: Metadata = {
   title: "CallSync Notes",
   description: "Sync and display call history with notes.",
+  manifest: "/manifest.json",
+  themeColor: "hsl(var(--primary))",
 };
 
 export default function RootLayout({
@@ -22,6 +24,7 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link rel="apple-touch-icon" href="/icon-192x192.png"></link>
       </head>
       <body className={cn("font-body antialiased", "bg-gray-100 dark:bg-gray-900")}>
         <main className="relative mx-auto h-dvh max-w-md overflow-hidden border-x bg-background shadow-2xl">
