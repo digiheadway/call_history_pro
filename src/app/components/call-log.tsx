@@ -132,7 +132,6 @@ export default function CallLog({
 
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
   
-  // Logic from the table
   const connectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_duration >= 5), [allGroups]);
   const connectedIds = useMemo(() => new Set(connectedGroups.map(g => g.caller.id)), [connectedGroups]);
 
@@ -144,36 +143,40 @@ export default function CallLog({
 
   const mayBeMissedGroups = useMemo(() => {
     return allGroups.filter(g => {
-      const isMayBeMissed = 
-        g.caller.last_call_type === 'incoming' &&
-        g.caller.last_call_duration > 0 &&
-        g.caller.last_call_duration < 5;
+      const isMayBeMissed = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration > 0 && g.caller.last_call_duration < 5;
       return isMayBeMissed && !connectedIds.has(g.caller.id) && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id);
     });
   }, [allGroups, connectedIds, missedIds, rejectedIds]);
 
   const outgoingFailedGroups = useMemo(() => {
     return allGroups.filter(g => {
-        const isOutgoingFailed = 
-          g.caller.last_call_type === 'outgoing' &&
-          g.caller.last_call_duration < 5;
-        return isOutgoingFailed && !connectedIds.has(g.caller.id);
+      const isOutgoingFailed = g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration < 5;
+      return isOutgoingFailed && !connectedIds.has(g.caller.id);
     });
   }, [allGroups, connectedIds]);
 
+  const phoneNumbersWithConnection = useMemo(() => new Set(allCallers.filter(c => c.last_call_duration >= 5).map(c => c.phone)), [allCallers]);
+
   const neverAttendedGroups = useMemo(() => {
-    // This logic relies on having the full call history, which isn't available without expanding.
-    // The simplified logic will be: a contact where no call has ever been > 5s
-    const phoneNumbersWithConnection = new Set(allCallers.filter(c => c.last_call_duration >= 5).map(c => c.phone));
-    return allGroups.filter(g => !phoneNumbersWithConnection.has(g.caller.phone));
-  }, [allGroups, allCallers]);
+    return allGroups.filter(g => {
+      // Condition 1: Never had a successful call.
+      if (phoneNumbersWithConnection.has(g.caller.phone)) {
+        return false;
+      }
+      // Condition 2: The last call was an outgoing failure.
+      const isLastCallOutgoingFail = g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration < 5;
+      if (!isLastCallOutgoingFail) {
+        return false;
+      }
+      // Condition 3: Must have more than one call attempt.
+      return g.caller.calls_in_range >= 2;
+    });
+  }, [allGroups, phoneNumbersWithConnection]);
+
 
   const mayBePendingGroups = useMemo(() => {
     return allGroups.filter(g => {
-      const isMayBePending =
-        g.caller.last_call_type === 'incoming' &&
-        g.caller.last_call_duration >= 0 &&
-        g.caller.last_call_duration < 5;
+      const isMayBePending = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration >= 0 && g.caller.last_call_duration < 5;
       return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id);
     });
   }, [allGroups, missedIds, rejectedIds, connectedIds]);
