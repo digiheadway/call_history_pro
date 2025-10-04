@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useState, useEffect } from "react";
 import { DateRange } from "react-day-picker";
-import { format, subDays, startOfToday, endOfDay, parseISO } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 import { Calendar as CalendarIcon, Search } from 'lucide-react';
 import type { LeadFilter, CustomNameFilter, TypeFilter, NoteFilter, SyncFilter } from '@/app/page';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -56,28 +56,28 @@ export default function FilterPanel({
   const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
 
   const handlePresetChange = (value: string) => {
-    const today = startOfToday();
+    const today = startOfDay(new Date());
     let newRange: DateRange | undefined;
     
     switch(value) {
       case 'today':
-        newRange = { from: today, to: today };
+        newRange = { from: today, to: endOfDay(today) };
         break;
       case 'yesterday':
         const yesterday = subDays(today, 1);
-        newRange = { from: yesterday, to: yesterday };
+        newRange = { from: yesterday, to: endOfDay(yesterday) };
         break;
       case '3':
-        newRange = { from: subDays(today, 2), to: today };
+        newRange = { from: subDays(today, 2), to: endOfDay(today) };
         break;
       case '7':
-        newRange = { from: subDays(today, 6), to: today };
+        newRange = { from: subDays(today, 6), to: endOfDay(today) };
         break;
       case '14':
-        newRange = { from: subDays(today, 13), to: today };
+        newRange = { from: subDays(today, 13), to: endOfDay(today) };
         break;
       case '30':
-        newRange = { from: subDays(today, 29), to: today };
+        newRange = { from: subDays(today, 29), to: endOfDay(today) };
         break;
       case 'custom':
         setIsDatePopoverOpen(true);
@@ -86,10 +86,9 @@ export default function FilterPanel({
         newRange = undefined;
     }
     
-    if (newRange?.from) {
-        onDateRangeChange({ from: startOfDay(newRange.from), to: endOfDay(newRange.to || newRange.from) });
-    } else {
-        onDateRangeChange(undefined);
+    onDateRangeChange(newRange);
+    if(value !== 'custom') {
+        setIsDatePopoverOpen(false);
     }
   }
   
@@ -99,16 +98,11 @@ export default function FilterPanel({
     } else {
        onDateRangeChange(undefined);
     }
-    // Close popover when a date/range is selected
+    
     if (range?.from && range.to) {
       setIsDatePopoverOpen(false);
     }
-     if (range?.from && !range.to) { // For single day selection
-      // Keep it open for range, but if it was a single click, you might want to close it.
-      // For this implementation, we will assume range selection and keep it open.
-    }
   }
-
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
@@ -223,11 +217,11 @@ export default function FilterPanel({
                   </Select>
                 </div>
 
-                 <div>
-                  <Label className="text-sm font-medium text-foreground">Contact Type</Label>
-                   <Select value={typeFilter} onValueChange={value => setTypeFilter(value as TypeFilter)}>
+                <div>
+                  <Label className="text-sm font-medium text-foreground">Caller Type</Label>
+                  <Select value={typeFilter} onValueChange={value => setTypeFilter(value as TypeFilter)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Filter by contact type" />
+                      <SelectValue placeholder="Filter by caller type" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
@@ -236,12 +230,12 @@ export default function FilterPanel({
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div>
-                  <Label className="text-sm font-medium text-foreground">Person Note</Label>
+                
+                 <div>
+                  <Label className="text-sm font-medium text-foreground">Contact Note</Label>
                    <Select value={noteFilter} onValueChange={value => setNoteFilter(value as NoteFilter)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Filter by note status" />
+                      <SelectValue placeholder="Filter by note" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
@@ -251,7 +245,7 @@ export default function FilterPanel({
                   </Select>
                 </div>
 
-                 <div>
+                <div>
                   <Label className="text-sm font-medium text-foreground">Sync Status</Label>
                    <Select value={syncFilter} onValueChange={value => setSyncFilter(value as SyncFilter)}>
                     <SelectTrigger>
@@ -260,7 +254,7 @@ export default function FilterPanel({
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       <SelectItem value="done">Done</SelectItem>
-                      <SelectItem value="undone">Undone</SelectItem>
+                      <SelectItem value="undone">Not Done</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -268,11 +262,9 @@ export default function FilterPanel({
           </div>
         </div>
         <div className="border-t p-4">
-             <Button onClick={onClose} className="w-full">Done</Button>
+            <Button onClick={onClose} className="w-full">Done</Button>
         </div>
       </SheetContent>
     </Sheet>
   );
 }
-
-    
