@@ -46,6 +46,16 @@ export type GroupedCalls = Record<string, {
     callerCount: number;
 }>;
 
+export interface DateSummary {
+    [date: string]: number;
+}
+
+export interface SummaryData {
+    callers: DateSummary;
+    calls: DateSummary;
+}
+
+
 export interface Lead {
     id: string;
     name: string;

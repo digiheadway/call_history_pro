@@ -1,13 +1,14 @@
 
 'use client';
 
-import type { Caller, Call, GroupedCalls } from '@/lib/types';
+import type { Caller, Call, GroupedCalls, SummaryData } from '@/lib/types';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { CallGroupCard } from '@/app/components/call-card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMemo } from 'react';
 import { Separator } from '@/components/ui/separator';
 import { usePersistentScroll } from '@/hooks/use-persistent-scroll';
+import { format, isToday, isYesterday, parse } from 'date-fns';
 
 export interface CallGroup {
   caller: Caller;
@@ -31,6 +32,8 @@ interface CallLogProps {
   toggleAccordion: (id: string) => void;
   currentlyPlaying: string | null;
   setCurrentlyPlaying: (id: string | null) => void;
+  summaryData: SummaryData | null;
+  isSummaryLoading: boolean;
 }
 
 const CallGroupList = ({
@@ -47,7 +50,9 @@ const CallGroupList = ({
   expandedAccordions,
   toggleAccordion,
   currentlyPlaying,
-  setCurrentlyPlaying
+  setCurrentlyPlaying,
+  summaryData,
+  isSummaryLoading,
 }: {
   groups: GroupedCalls;
   sortedGroupTitles: string[];
@@ -63,8 +68,36 @@ const CallGroupList = ({
   toggleAccordion: (id: string) => void;
   currentlyPlaying: string | null;
   setCurrentlyPlaying: (id: string | null) => void;
+  summaryData: SummaryData | null;
+  isSummaryLoading: boolean;
 }) => {
   const hasCalls = sortedGroupTitles.some(title => groups[title] && groups[title].groups.length > 0);
+
+  const getSummaryForTitle = (title: string): string => {
+    if (isSummaryLoading) return '(.../...)';
+    
+    let dateKey: string;
+    if (title === 'Today') {
+        dateKey = format(new Date(), 'yyyy-MM-dd');
+    } else if (title === 'Yesterday') {
+        dateKey = format(new Date(new Date().setDate(new Date().getDate() - 1)), 'yyyy-MM-dd');
+    } else {
+        try {
+            dateKey = format(parse(title, 'MMMM d, yyyy', new Date()), 'yyyy-MM-dd');
+        } catch {
+             // Fallback for titles that aren't dates
+            return `(${groups[title].callCount}/${groups[title].callerCount})`;
+        }
+    }
+    
+    if (summaryData) {
+        const calls = summaryData.calls[dateKey] ?? 0;
+        const callers = summaryData.callers[dateKey] ?? 0;
+        return `(${calls}/${callers})`;
+    }
+    
+    return `(${groups[title].callCount}/${groups[title].callerCount})`;
+  };
 
   return (
     <ScrollArea className="h-full" viewportRef={scrollAreaRef}>
@@ -77,7 +110,8 @@ const CallGroupList = ({
             const titleText = title.startsWith('Today') || title.startsWith('Yesterday') 
               ? title.split(' (')[0]
               : title;
-            const stats = `(${groupInfo.callCount}/${groupInfo.callerCount})`;
+            
+            const stats = getSummaryForTitle(title);
 
             return (
               <div key={title}>
@@ -89,7 +123,7 @@ const CallGroupList = ({
                 <div className="mt-2 space-y-2">
                   {groupInfo.groups.map(group => (
                     <CallGroupCard
-                      key={group.caller.id}
+                      key={`${tab}-${group.caller.id}`}
                       group={group}
                       onUpdateContactNote={onUpdateContactNote}
                       onUpdateCallNote={onUpdateCallNote}
@@ -135,29 +169,26 @@ export default function CallLog({
     expandedAccordions,
     toggleAccordion,
     currentlyPlaying,
-    setCurrentlyPlaying
+    setCurrentlyPlaying,
+    summaryData,
+    isSummaryLoading,
 }: CallLogProps) {
   
   const scrollRef = usePersistentScroll('callLogScroll');
 
   const allGroups = useMemo(() => sortedGroupTitles.flatMap(title => groupedCalls[title]?.groups || []), [groupedCalls, sortedGroupTitles]);
   
-  // Connected: duration >= 5s
   const connectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_duration >= 5), [allGroups]);
   const connectedIds = useMemo(() => new Set(connectedGroups.map(g => g.caller.id)), [connectedGroups]);
 
-  // Missed: (last_call_type=missed, duration=0) OR (last_call_type=incoming, 0 < duration < 5)
   const missedGroups = useMemo(() => allGroups.filter(g => 
     (g.caller.last_call_type === 'missed' && g.caller.last_call_duration === 0) ||
     (g.caller.last_call_type === 'incoming' && g.caller.last_call_duration > 0 && g.caller.last_call_duration < 5)
   ), [allGroups]);
   const missedIds = useMemo(() => new Set(missedGroups.map(g => g.caller.id)), [missedGroups]);
 
-  // Rejected: last_call=incoming, type=rejected
   const rejectedGroups = useMemo(() => allGroups.filter(g => g.caller.last_call_type === 'rejected'), [allGroups]);
-  const rejectedIds = useMemo(() => new Set(rejectedGroups.map(g => g.caller.id)), [rejectedGroups]);
   
-  // Outgoing Failed: last_call=outgoing, duration < 5
   const outgoingFailedGroups = useMemo(() => {
     return allGroups.filter(g => {
       const isOutgoingFailed = g.caller.last_call_type === 'outgoing' && g.caller.last_call_duration < 5;
@@ -167,11 +198,9 @@ export default function CallLog({
   const outgoingFailedIds = useMemo(() => new Set(outgoingFailedGroups.map(g => g.caller.id)), [outgoingFailedGroups]);
 
   const phoneNumbersWithConnection = useMemo(() => {
-    // This looks at all callers ever, not just in the current date range
     return new Set(allCallers.filter(c => c.last_call_duration >= 5).map(c => c.phone));
   }, [allCallers]);
   
-  // Never Attended: total calls >= 2, last call is Outgoing Failed, and no connected call EVER for this phone number
   const neverAttendedGroups = useMemo(() => {
     return allGroups.filter(g => {
       if (g.caller.calls < 2) return false;
@@ -179,28 +208,16 @@ export default function CallLog({
       return outgoingFailedIds.has(g.caller.id);
     });
   }, [allGroups, phoneNumbersWithConnection, outgoingFailedIds]);
-  const neverAttendedIds = useMemo(() => new Set(neverAttendedGroups.map(g => g.caller.id)), [neverAttendedGroups]);
-
-  // May Be Pending: last_call=incoming, duration 0-4s, and not in other specific categories
-  const mayBePendingGroups = useMemo(() => {
-    return allGroups.filter(g => {
-      const isMayBePending = g.caller.last_call_type === 'incoming' && g.caller.last_call_duration >= 0 && g.caller.last_call_duration < 5;
-      return isMayBePending && !missedIds.has(g.caller.id) && !rejectedIds.has(g.caller.id) && !connectedIds.has(g.caller.id) && !neverAttendedIds.has(g.caller.id);
-    });
-  }, [allGroups, missedIds, rejectedIds, connectedIds, neverAttendedIds]);
-
-
+  
   const filterGroupsByTitle = (groups: CallGroup[]) => {
     const titleMap: Record<string, CallGroup[]> = {};
+    const groupIds = new Set(groups.map(g => g.caller.id));
+
     for (const title of sortedGroupTitles) {
         const titleGroups = groupedCalls[title]?.groups || [];
-        for (const group of groups) {
-            if (titleGroups.some(g => g.caller.id === group.caller.id)) {
-                if (!titleMap[title]) {
-                    titleMap[title] = [];
-                }
-                titleMap[title].push(group);
-            }
+        const matchingGroups = titleGroups.filter(g => groupIds.has(g.caller.id));
+        if (matchingGroups.length > 0) {
+            titleMap[title] = matchingGroups;
         }
     }
 
@@ -218,12 +235,11 @@ export default function CallLog({
 
   const getSortedTitlesForGroups = (groups: CallGroup[]) => {
       const titles = new Set<string>();
-      for (const group of groups) {
-          const foundTitle = sortedGroupTitles.find(title => 
-              groupedCalls[title]?.groups.some(g => g.caller.id === group.caller.id)
-          );
-          if (foundTitle) {
-              titles.add(foundTitle);
+      const groupIds = new Set(groups.map(g => g.caller.id));
+
+      for (const title of sortedGroupTitles) {
+          if (groupedCalls[title]?.groups.some(g => groupIds.has(g.caller.id))) {
+              titles.add(title);
           }
       }
       return sortedGroupTitles.filter(t => titles.has(t));
@@ -243,12 +259,8 @@ export default function CallLog({
   
   const groupedNeverAttended = useMemo(() => filterGroupsByTitle(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
   const sortedNeverAttendedTitles = useMemo(() => getSortedTitlesForGroups(neverAttendedGroups), [neverAttendedGroups, sortedGroupTitles, groupedCalls]);
-  
-  const groupedMayBePending = useMemo(() => filterGroupsByTitle(mayBePendingGroups), [mayBePendingGroups, sortedGroupTitles, groupedCalls]);
-  const sortedMayBePendingTitles = useMemo(() => getSortedTitlesForGroups(mayBePendingGroups), [mayBePendingGroups, sortedGroupTitles, groupedCalls]);
 
-
-  const listProps = { onUpdateContactNote, onUpdateCallNote, onUpdateCallerInfo, onExcludeNumber, onMarkSynced, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion, currentlyPlaying, setCurrentlyPlaying };
+  const listProps = { onUpdateContactNote, onUpdateCallNote, onUpdateCallerInfo, onExcludeNumber, onMarkSynced, setCallsByPhone, scrollAreaRef: scrollRef, expandedAccordions, toggleAccordion, currentlyPlaying, setCurrentlyPlaying, summaryData, isSummaryLoading };
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
@@ -261,7 +273,6 @@ export default function CallLog({
             <TabsTrigger value="rejected">Rejected</TabsTrigger>
             <TabsTrigger value="outgoing-failed">Outgoing Failed</TabsTrigger>
             <TabsTrigger value="never-attended">Never Attended</TabsTrigger>
-            <TabsTrigger value="may-be-pending">May Be Pending</TabsTrigger>
           </TabsList>
         </div>
       </div>
@@ -310,14 +321,6 @@ export default function CallLog({
             groups={groupedNeverAttended}
             sortedGroupTitles={sortedNeverAttendedTitles}
             tab="Never Attended"
-            {...listProps}
-        />
-      </TabsContent>
-      <TabsContent value="may-be-pending" className="flex-1 overflow-hidden">
-         <CallGroupList 
-            groups={groupedMayBePending}
-            sortedGroupTitles={sortedMayBePendingTitles}
-            tab="May be Pending"
             {...listProps}
         />
       </TabsContent>

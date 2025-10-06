@@ -1,6 +1,6 @@
 
 // @ts-nocheck
-import type { Caller, Call, Lead } from './types';
+import type { Caller, Call, Lead, SummaryData } from './types';
 const API_BASE_URL = 'https://prop.digiheadway.in/api/calls/crm.php';
 const API_V3_BASE_URL = 'https://prop.digiheadway.in/api/v3/';
 
@@ -56,13 +56,14 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
             phone: caller.caller_phone,
             custom_name: caller.custom_name,
             caller_type: caller.caller_type,
+            calls: parseInt(caller.calls, 10) || 0, // ensure calls is a number
             last_call: caller.last_call,
             last_call_type: caller.last_call_type,
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
             note: caller.note,
             excluded: caller.excluded === '1',
             last_sync: caller.last_sync === '1',
-            calls_in_range: parseInt(caller.calls, 10) || 0,
+            calls_in_range: parseInt(caller.calls, 10) || 0, // This is updated by the new webhook logic
             lead_id: caller.lead_id,
             lead_name: caller.lead_name,
             segment: caller.segment,
@@ -74,6 +75,10 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
             ...call,
             duration: parseInt(call.duration, 10) || 0,
         })) as T;
+    }
+
+    if (action === 'fetch_summary') {
+        return data.summary as T;
     }
 
     return (data.data || data) as T;
@@ -93,6 +98,13 @@ export function fetchCallers(params: {
   max_last_call_duration?: number;
 }): Promise<Caller[]> {
   return apiRequest(API_BASE_URL, 'fetch_callers', params);
+}
+
+export function fetchSummary(params: {
+    start_date: string;
+    end_date: string;
+}): Promise<SummaryData> {
+    return apiRequest(API_BASE_URL, 'fetch_summary', params);
 }
 
 export function fetchCalls(params: {

@@ -13,8 +13,9 @@ import {
   updateExcludedStatus,
   markSynced,
   updateCallerInfo,
+  fetchSummary,
 } from '@/lib/api';
-import type { Caller, Call, DateRange, GroupedCalls, CallGroup } from '@/lib/types';
+import type { Caller, Call, DateRange, GroupedCalls, CallGroup, SummaryData } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { usePersistentState } from '@/hooks/use-persistent-state';
 
@@ -34,6 +35,8 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [allCallers, setAllCallers] = useState<Caller[]>([]);
   const [callsByPhone, setCallsByPhone] = useState<Record<string, Call[]>>({});
+  const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
   const [searchQuery, setSearchQuery] = usePersistentState('searchQuery', '');
   const [activeTab, setActiveTab] = usePersistentState('activeTab', 'all');
@@ -81,10 +84,10 @@ export default function Home() {
           start_date: startDate,
           end_date: endDate,
         });
-        setAllCallers(fetchedCallers.filter(c => !c.excluded));
+        setAllCallers(fetchedCallers);
       } else {
         const fetchedCallers = await fetchCallers({});
-        setAllCallers(fetchedCallers.filter(c => !c.excluded));
+        setAllCallers(fetchedCallers);
       }
     } catch (error) {
       console.error('Failed to fetch callers:', error);
@@ -98,10 +101,28 @@ export default function Home() {
     }
   }, [toast]);
 
+  const fetchAndSetSummary = useCallback(async (range: DateRange | undefined) => {
+    if (!range || !range.from) return;
+
+    setIsSummaryLoading(true);
+    try {
+      const startDate = format(startOfDay(range.from), 'yyyy-MM-dd');
+      const endDate = format(endOfDay(range.to || range.from), 'yyyy-MM-dd');
+      const summary = await fetchSummary({ start_date: startDate, end_date: endDate });
+      setSummaryData(summary);
+    } catch (error) {
+      console.error('Failed to fetch summary:', error);
+      // Optional: show a toast, but maybe it's better to fail silently
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  }, []);
+
 
   useEffect(() => {
     fetchAndSetCallers(dateRange);
-  }, [dateRange, fetchAndSetCallers]);
+    fetchAndSetSummary(dateRange);
+  }, [dateRange, fetchAndSetCallers, fetchAndSetSummary]);
 
   const handleUpdateContactNote = async (callerId: string, newNote: string) => {
     try {
@@ -291,20 +312,18 @@ export default function Home() {
     }
 
     const sortedTitles = Object.keys(finalGroupedCalls).sort((a, b) => {
-      const aDate = new Date(a);
-      const bDate = new Date(b);
-
-      if (a === 'Today') return -1;
-      if (b === 'Today') return 1;
-      if (a === 'Yesterday') return -1;
-      if (b === 'Yesterday') return 1;
+      let aDate: Date;
+      let bDate: Date;
       
-      // Check if dates are valid before comparing
-      if (!isNaN(aDate.getTime()) && !isNaN(bDate.getTime())) {
-          return bDate.getTime() - aDate.getTime();
-      }
-      // Fallback for non-date titles if any
-      return a.localeCompare(b);
+      if (a === 'Today') aDate = new Date();
+      else if (a === 'Yesterday') aDate = subDays(new Date(), 1);
+      else aDate = new Date(a);
+
+      if (b === 'Today') bDate = new Date();
+      else if (b === 'Yesterday') bDate = subDays(new Date(), 1);
+      else bDate = new Date(b);
+
+      return bDate.getTime() - aDate.getTime();
     });
 
     return { groupedAndSortedCalls: finalGroupedCalls, sortedGroupTitles: sortedTitles };
@@ -350,6 +369,8 @@ export default function Home() {
             toggleAccordion={toggleAccordion}
             currentlyPlaying={currentlyPlaying}
             setCurrentlyPlaying={setCurrentlyPlaying}
+            summaryData={summaryData}
+            isSummaryLoading={isSummaryLoading}
         />
       )}
     </div>
