@@ -14,7 +14,7 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
     url = new URL(baseURL);
     url.searchParams.append('action', action);
     for (const key in params) {
-      if (params[key] !== undefined) {
+      if (params[key] !== undefined && params[key] !== null && params[key] !== 'all' && params[key] !== '') {
         url.searchParams.append(key, String(params[key]));
       }
     }
@@ -23,7 +23,7 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
     url.searchParams.append('action', action);
     const formData = new FormData();
     for (const key in params) {
-       if (params[key] !== undefined) {
+       if (params[key] !== undefined && params[key] !== null && params[key] !== 'all' && params[key] !== '') {
          formData.append(key, String(params[key]));
        }
     }
@@ -63,7 +63,7 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
             note: caller.note,
             excluded: caller.excluded === '1',
             last_sync: caller.last_sync === '1',
-            calls_in_range: parseInt(caller.calls, 10) || 0, // This is updated by the new webhook logic
+            calls_in_range: parseInt(caller.calls_in_range, 10) || parseInt(caller.calls, 10) || 0,
             lead_id: caller.lead_id,
             lead_name: caller.lead_name,
             segment: caller.segment,
@@ -89,13 +89,14 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
 }
 
 export function fetchCallers(params: {
-  start_date?: string; // YYYY-MM-DD
-  end_date?: string;   // YYYY-MM-DD
-  phone?: string;
-  caller_id?: string;
-  last_call_type?: 'incoming' | 'outgoing' | 'missed' | 'rejected';
-  min_last_call_duration?: number;
-  max_last_call_duration?: number;
+  start_date?: string;
+  end_date?: string;
+  search_query?: string;
+  lead_filter?: 'all' | 'lead' | 'not-lead';
+  custom_name_filter?: 'all' | 'set' | 'not-set';
+  type_filter?: 'all' | 'set' | 'not-set';
+  note_filter?: 'all' | 'with-note' | 'without-note';
+  sync_filter?: 'all' | 'done' | 'undone';
 }): Promise<Caller[]> {
   return apiRequest(API_BASE_URL, 'fetch_callers', params);
 }
@@ -128,7 +129,8 @@ export function updateExcludedStatus(caller_id: string, excluded: boolean): Prom
 }
 
 export function markSynced(caller_id: string, current_status: boolean): Promise<any> {
-    return apiRequest(API_BASE_URL, 'mark_synced', { caller_id, status: current_status ? 1 : 0 }, 'POST');
+    const newStatus = !current_status;
+    return apiRequest(API_BASE_URL, 'mark_synced', { caller_id, status: newStatus ? 1 : 0 }, 'POST');
 }
 
 export function updateCallerInfo(caller_id: string, info: { custom_name?: string; caller_type?: string }): Promise<any> {

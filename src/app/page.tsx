@@ -74,21 +74,24 @@ export default function Home() {
     });
   };
 
-  const fetchAndSetCallers = useCallback(async (range: DateRange | undefined) => {
+  const fetchAndSetCallers = useCallback(async () => {
     setLoading(true);
     try {
-      if (range && range.from) {
-        const startDate = format(startOfDay(range.from), 'yyyy-MM-dd');
-        const endDate = format(endOfDay(range.to || range.from), 'yyyy-MM-dd');
+        const startDate = dateRange?.from ? format(startOfDay(dateRange.from), 'yyyy-MM-dd') : undefined;
+        const endDate = dateRange?.to ? format(endOfDay(dateRange.to), 'yyyy-MM-dd') : startDate;
+        
         const fetchedCallers = await fetchCallers({
           start_date: startDate,
           end_date: endDate,
+          search_query: searchQuery,
+          lead_filter: leadFilter,
+          custom_name_filter: customNameFilter,
+          type_filter: typeFilter,
+          note_filter: noteFilter,
+          sync_filter: syncFilter,
         });
         setAllCallers(fetchedCallers);
-      } else {
-        const fetchedCallers = await fetchCallers({});
-        setAllCallers(fetchedCallers);
-      }
+      
     } catch (error) {
       console.error('Failed to fetch callers:', error);
       toast({
@@ -99,7 +102,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [dateRange, searchQuery, leadFilter, customNameFilter, typeFilter, noteFilter, syncFilter, toast]);
 
   const fetchAndSetSummary = useCallback(async (range: DateRange | undefined) => {
     if (!range || !range.from) return;
@@ -118,11 +121,13 @@ export default function Home() {
     }
   }, []);
 
+  useEffect(() => {
+    fetchAndSetCallers();
+  }, [fetchAndSetCallers]);
 
   useEffect(() => {
-    fetchAndSetCallers(dateRange);
     fetchAndSetSummary(dateRange);
-  }, [dateRange, fetchAndSetCallers, fetchAndSetSummary]);
+  }, [dateRange, fetchAndSetSummary]);
 
   const handleUpdateContactNote = async (callerId: string, newNote: string) => {
     try {
@@ -191,17 +196,16 @@ export default function Home() {
   };
 
   const handleMarkSynced = async (callerId: string, currentStatus: boolean) => {
-    const newStatus = !currentStatus;
     try {
-      await markSynced(callerId, newStatus);
+      await markSynced(callerId, currentStatus);
       setAllCallers((prev) => 
         prev.map((caller) =>
-            caller.id === callerId ? { ...caller, last_sync: newStatus } : caller
+            caller.id === callerId ? { ...caller, last_sync: !currentStatus } : caller
         )
       );
       toast({
         title: 'Contact Status Updated',
-        description: `Contact has been marked as ${newStatus ? 'done' : 'not done'}.`,
+        description: `Contact has been marked as ${!currentStatus ? 'done' : 'not done'}.`,
       });
     } catch(error) {
         console.error('Failed to mark as synced:', error);
@@ -235,44 +239,6 @@ export default function Home() {
       });
     }
   };
-  
-  const filteredCallers = useMemo(() => {
-    return allCallers
-      .filter(caller => {
-        // Search Query Filter
-        if (searchQuery) {
-          const lowercasedQuery = searchQuery.toLowerCase();
-          const name = caller.lead_name || caller.custom_name || '';
-          const phone = caller.phone || '';
-          if (!name.toLowerCase().includes(lowercasedQuery) && !phone.includes(lowercasedQuery)) {
-            return false;
-          }
-        }
-
-        // Lead Filter
-        if (leadFilter === 'lead' && !caller.lead_id) return false;
-        if (leadFilter === 'not-lead' && caller.lead_id) return false;
-
-        // Custom Name Filter
-        if (customNameFilter === 'set' && (!caller.custom_name || caller.custom_name.trim() === '')) return false;
-        if (customNameFilter === 'not-set' && caller.custom_name && caller.custom_name.trim() !== '') return false;
-
-        // Type Filter
-        if (typeFilter === 'set' && (!caller.caller_type || caller.caller_type.trim() === '')) return false;
-        if (typeFilter === 'not-set' && caller.caller_type && caller.caller_type.trim() !== '') return false;
-
-        // Note Filter
-        if (noteFilter === 'with-note' && (!caller.note || caller.note.trim() === '')) return false;
-        if (noteFilter === 'without-note' && caller.note && caller.note.trim() !== '') return false;
-
-        // Sync Filter
-        if (syncFilter === 'done' && !caller.last_sync) return false;
-        if (syncFilter === 'undone' && caller.last_sync) return false;
-
-        return true;
-    });
-  }, [allCallers, searchQuery, leadFilter, customNameFilter, typeFilter, noteFilter, syncFilter]);
-
 
   const getGroupTitle = useCallback((date: Date) => {
     const startOfDate = startOfDay(date);
@@ -282,7 +248,7 @@ export default function Home() {
   }, []);
   
   const { groupedAndSortedCalls, sortedGroupTitles } = useMemo(() => {
-    const callGroups = filteredCallers
+    const callGroups = allCallers
       .sort((a, b) => new Date(b.last_call).getTime() - new Date(a.last_call).getTime())
       .map((caller): CallGroup => ({
         caller: caller,
@@ -328,7 +294,7 @@ export default function Home() {
 
     return { groupedAndSortedCalls: finalGroupedCalls, sortedGroupTitles: sortedTitles };
 
-  }, [filteredCallers, callsByPhone, getGroupTitle]);
+  }, [allCallers, callsByPhone, getGroupTitle]);
   
   return (
     <div className="flex h-full flex-col">
