@@ -26,6 +26,7 @@ const CALLER_TYPE_OPTIONS = [
   'Renting',
   'Researching',
   'Personal',
+  'Sales',
   'Other'
 ];
 

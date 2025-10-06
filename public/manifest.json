@@ -1,3 +1,4 @@
+
 {
   "name": "CallSync Notes",
   "short_name": "CallSync",
@@ -5,7 +6,7 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#228be6",
+  "theme_color": "#000000",
   "icons": [
     {
       "src": "/icon-192x192.png",
