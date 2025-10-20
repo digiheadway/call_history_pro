@@ -22,6 +22,7 @@ import {
   Info,
   CheckCircle2,
   Edit,
+  ExternalLink,
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -293,10 +294,18 @@ function CallGroupCardComponent({
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                        {caller.lead_id && (
-                        <DropdownMenuItem onClick={() => setIsLeadInfoOpen(true)}>
-                          <Info className="mr-2 h-4 w-4" />
-                          Show Lead Info
-                        </DropdownMenuItem>
+                        <>
+                          <DropdownMenuItem onClick={() => setIsLeadInfoOpen(true)}>
+                            <Info className="mr-2 h-4 w-4" />
+                            Show Lead Info
+                          </DropdownMenuItem>
+                          <DropdownMenuItem asChild>
+                            <a href={`https://uptwn-sales2.netlify.app/leads/${caller.lead_id}`} target="_blank" rel="noopener noreferrer" className="flex items-center">
+                              <ExternalLink className="mr-2 h-4 w-4" />
+                              Go to Lead
+                            </a>
+                          </DropdownMenuItem>
+                        </>
                        )}
                        <DropdownMenuItem onClick={() => setIsUpdateInfoOpen(true)}>
                           <Edit className="mr-2 h-4 w-4" />
