@@ -84,11 +84,6 @@ export default function Home() {
           start_date: startDate,
           end_date: endDate,
           search_query: searchQuery,
-          lead_filter: leadFilter,
-          custom_name_filter: customNameFilter,
-          type_filter: typeFilter,
-          note_filter: noteFilter,
-          sync_filter: syncFilter,
         });
         setAllCallers(fetchedCallers);
       
@@ -102,7 +97,7 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }, [dateRange, searchQuery, leadFilter, customNameFilter, typeFilter, noteFilter, syncFilter, toast]);
+  }, [dateRange, searchQuery, toast]);
 
   const fetchAndSetSummary = useCallback(async (range: DateRange | undefined) => {
     if (!range || !range.from) return;
@@ -239,6 +234,28 @@ export default function Home() {
       });
     }
   };
+  
+  const filteredCallers = useMemo(() => {
+    return allCallers.filter(caller => {
+      if (leadFilter === 'lead' && !caller.lead_id) return false;
+      if (leadFilter === 'not-lead' && caller.lead_id) return false;
+      
+      if (customNameFilter === 'set' && !caller.custom_name) return false;
+      if (customNameFilter === 'not-set' && caller.custom_name) return false;
+
+      if (typeFilter === 'set' && !caller.caller_type) return false;
+      if (typeFilter === 'not-set' && caller.caller_type) return false;
+
+      if (noteFilter === 'with-note' && !caller.note) return false;
+      if (noteFilter === 'without-note' && caller.note) return false;
+
+      if (syncFilter === 'done' && !caller.last_sync) return false;
+      if (syncFilter === 'undone' && caller.last_sync) return false;
+      
+      return true;
+    });
+  }, [allCallers, leadFilter, customNameFilter, typeFilter, noteFilter, syncFilter]);
+
 
   const getGroupTitle = useCallback((date: Date) => {
     const startOfDate = startOfDay(date);
@@ -248,7 +265,7 @@ export default function Home() {
   }, []);
   
   const { groupedAndSortedCalls, sortedGroupTitles } = useMemo(() => {
-    const callGroups = allCallers
+    const callGroups = filteredCallers
       .sort((a, b) => new Date(b.last_call).getTime() - new Date(a.last_call).getTime())
       .map((caller): CallGroup => ({
         caller: caller,
@@ -294,7 +311,7 @@ export default function Home() {
 
     return { groupedAndSortedCalls: finalGroupedCalls, sortedGroupTitles: sortedTitles };
 
-  }, [allCallers, callsByPhone, getGroupTitle]);
+  }, [filteredCallers, callsByPhone, getGroupTitle]);
   
   return (
     <div className="flex h-full flex-col">

@@ -17,6 +17,9 @@ export interface Caller {
   lead_name: string | null;
   segment: string | null;
   budget: string | null;
+  address: string | null;
+  about_him: string | null;
+  lead_note: string | null;
 }
 
 export interface Call {

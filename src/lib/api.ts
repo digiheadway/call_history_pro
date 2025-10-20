@@ -68,6 +68,9 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
             lead_name: caller.lead_name,
             segment: caller.segment,
             budget: caller.budget,
+            address: caller.address,
+            about_him: caller.about_him,
+            lead_note: caller.lead_note,
         })) as T;
     }
      if (action === 'fetch_calls' && Array.isArray(data.data)) {
@@ -92,11 +95,6 @@ export function fetchCallers(params: {
   start_date?: string;
   end_date?: string;
   search_query?: string;
-  lead_filter?: 'all' | 'lead' | 'not-lead';
-  custom_name_filter?: 'all' | 'set' | 'not-set';
-  type_filter?: 'all' | 'set' | 'not-set';
-  note_filter?: 'all' | 'with-note' | 'without-note';
-  sync_filter?: 'all' | 'done' | 'undone';
 }): Promise<Caller[]> {
   return apiRequest(API_BASE_URL, 'fetch_callers', params);
 }
