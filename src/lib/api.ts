@@ -56,11 +56,11 @@ async function apiRequest<T>(baseURL: string, action: string, params: Record<str
             phone: caller.caller_phone,
             custom_name: caller.custom_name,
             caller_type: caller.caller_type,
-            calls: parseInt(caller.calls, 10) || 0, // ensure calls is a number
+            calls: parseInt(caller.calls, 10) || 0,
             last_call: caller.last_call,
             last_call_type: caller.last_call_type,
             last_call_duration: parseInt(caller.last_call_duration, 10) || 0,
-            note: caller.note,
+            note: caller.note, // Changed from caller.caller_note
             excluded: caller.excluded === '1',
             last_sync: caller.last_sync === '1',
             calls_in_range: parseInt(caller.calls_in_range, 10) || parseInt(caller.calls, 10) || 0,
